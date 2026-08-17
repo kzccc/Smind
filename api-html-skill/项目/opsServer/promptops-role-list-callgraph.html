@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PromptOps 角色列表接口函数调用图</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; background: #f5f6f7; }
+    #promptops-callgraph {
+      --bg: #f5f6f7;
+      --panel: #ffffff;
+      --panel-soft: #f8f9fa;
+      --line: #d8dde3;
+      --line-strong: #aeb7c2;
+      --text: #1f2933;
+      --muted: #697586;
+      --accent: #344054;
+      --blue: #2f6f9f;
+      --red: #c0392b;
+      height: 100vh;
+      min-height: 720px;
+      display: grid;
+      grid-template-columns: var(--left-width, 360px) 8px minmax(180px, 1fr) 8px var(--right-width, 520px);
+      overflow: hidden;
+      color: var(--text);
+      font-family: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Segoe UI", sans-serif;
+      background: var(--bg);
+    }
+    #promptops-callgraph * { box-sizing: border-box; }
+    #promptops-callgraph .side {
+      min-width: 40px;
+      background: var(--panel);
+      border-color: var(--line);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #promptops-callgraph .left { border-right: 1px solid var(--line); }
+    #promptops-callgraph .right { border-left: 1px solid var(--line); }
+    #promptops-callgraph .resizer {
+      cursor: col-resize;
+      background: linear-gradient(90deg, transparent 3px, var(--line-strong) 3px, var(--line-strong) 5px, transparent 5px);
+    }
+    #promptops-callgraph .header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fafafa;
+    }
+    #promptops-callgraph .eyebrow {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    #promptops-callgraph .header-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    #promptops-callgraph h1,
+    #promptops-callgraph h2,
+    #promptops-callgraph h3 {
+      margin: 0;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+    #promptops-callgraph h2 {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-size: 15px;
+    }
+    #promptops-callgraph h3 {
+      margin-top: 18px;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 13px;
+    }
+    #promptops-callgraph .sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 8px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+    #promptops-callgraph .nav {
+      display: flex;
+      gap: 4px;
+      flex: 0 0 auto;
+    }
+    #promptops-callgraph button,
+    #promptops-callgraph .chip {
+      border: 1px solid var(--line-strong);
+      color: var(--text);
+      background: #fff;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 12px;
+      border-radius: 4px;
+    }
+    #promptops-callgraph button { cursor: pointer; }
+    #promptops-callgraph button:hover { background: #f0f2f4; }
+    #promptops-callgraph button:disabled { opacity: .35; cursor: not-allowed; }
+    #promptops-callgraph .nav button { width: 28px; height: 26px; padding: 0; line-height: 1; }
+    #promptops-callgraph .scroll { overflow: auto; padding: 14px 16px 24px; }
+    #promptops-callgraph .canvas-wrap {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(174, 183, 194, .22) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(174, 183, 194, .18) 1px, transparent 1px),
+        #f8f9fa;
+      background-size: 36px 36px;
+    }
+    #promptops-callgraph .toolbar {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      z-index: 5;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      max-width: calc(100% - 28px);
+    }
+    #promptops-callgraph .viewport {
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+    }
+    #promptops-callgraph .viewport.dragging { cursor: grabbing; }
+    #promptops-callgraph svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      user-select: none;
+    }
+    #promptops-callgraph .edge {
+      stroke: #9aa4b2;
+      stroke-width: 1.35;
+      fill: none;
+      cursor: pointer;
+      pointer-events: stroke;
+    }
+    #promptops-callgraph .edge-hit {
+      stroke: transparent;
+      stroke-width: 16;
+      fill: none;
+      cursor: pointer;
+      pointer-events: stroke;
+    }
+    #promptops-callgraph .edge.active {
+      stroke: var(--red);
+      stroke-width: 3.2;
+    }
+    #promptops-callgraph .edge-dot {
+      fill: #fff;
+      stroke: #7d8794;
+      stroke-width: 1.6;
+      cursor: grab;
+    }
+    #promptops-callgraph .edge-dot.active {
+      stroke: var(--red);
+      stroke-width: 2.6;
+    }
+    #promptops-callgraph .edge-dot:hover,
+    #promptops-callgraph .edge-dot.dragging {
+      stroke: var(--red);
+      stroke-width: 2.2;
+      cursor: grabbing;
+    }
+    #promptops-callgraph .mid-arrow {
+      fill: #7d8794;
+      pointer-events: none;
+    }
+    #promptops-callgraph .edge.active + .mid-arrow,
+    #promptops-callgraph .mid-arrow.active {
+      fill: var(--red);
+    }
+    #promptops-callgraph .node { cursor: grab; }
+    #promptops-callgraph .node.dragging { cursor: grabbing; }
+    #promptops-callgraph .node-frame {
+      fill: #fff;
+      stroke: var(--line-strong);
+      stroke-width: 1.2;
+      filter: drop-shadow(0 10px 22px rgba(31, 41, 51, .08));
+    }
+    #promptops-callgraph .select-ring {
+      fill: none;
+      stroke: var(--red);
+      stroke-width: 2.2;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #promptops-callgraph .node.active .select-ring { opacity: 1; }
+    #promptops-callgraph .node-card {
+      height: 100%;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: hidden;
+      background: #fff;
+      border-radius: 8px;
+      line-height: 1.3;
+    }
+    #promptops-callgraph .kind {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    #promptops-callgraph .label {
+      color: #101828;
+      font-size: 15px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #promptops-callgraph .file {
+      color: var(--blue);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #promptops-callgraph .node-sub {
+      margin-top: auto;
+      color: var(--muted);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #promptops-callgraph code,
+    #promptops-callgraph pre {
+      font-family: Consolas, "Microsoft YaHei", "微软雅黑", monospace;
+    }
+    #promptops-callgraph pre {
+      margin: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: #f7f8fa;
+      color: #26313d;
+      overflow: auto;
+      line-height: 1.5;
+      font-size: 12px;
+      white-space: pre;
+    }
+    #promptops-callgraph .item {
+      border: 1px solid var(--line);
+      padding: 10px;
+      background: #fafafa;
+      font-size: 12px;
+      line-height: 1.55;
+      margin-bottom: 8px;
+    }
+    #promptops-callgraph .item b { color: var(--accent); font-weight: 600; }
+    #promptops-callgraph .struct-link,
+    #promptops-callgraph .function-link {
+      color: var(--blue);
+      border-bottom: 1px dotted var(--blue);
+      cursor: pointer;
+      background: transparent;
+      padding: 0;
+    }
+    #promptops-callgraph .function-link {
+      color: var(--red);
+      border-bottom-color: var(--red);
+    }
+    #promptops-callgraph .struct-link:hover,
+    #promptops-callgraph .function-link:hover {
+      background: #eef2f6;
+    }
+    #promptops-callgraph .function-comment {
+      width: 100%;
+      min-height: 92px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      resize: vertical;
+      background: #fff;
+      color: var(--text);
+      font: 13px/1.6 "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+      outline: none;
+    }
+    #promptops-callgraph .function-comment:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(192, 57, 43, .10);
+    }
+    #promptops-callgraph table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    #promptops-callgraph th,
+    #promptops-callgraph td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 6px;
+      vertical-align: top;
+      text-align: left;
+    }
+    #promptops-callgraph th { color: var(--accent); font-weight: 600; }
+    #promptops-callgraph .empty {
+      color: var(--muted);
+      border: 1px dashed var(--line-strong);
+      padding: 14px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    @media (max-width: 980px) {
+      #promptops-callgraph { grid-template-columns: 1fr; height: auto; }
+      #promptops-callgraph .resizer { display: none; }
+      #promptops-callgraph .canvas-wrap { height: 620px; }
+      #promptops-callgraph .side { max-height: 520px; }
+    }
+  </style>
+</head>
+<body>
+<div id="promptops-callgraph">
+  <aside class="side left" aria-label="结构体详情">
+    <div class="header">
+      <div class="eyebrow">Struct inspector</div>
+      <h2 id="structTitle">结构体详情</h2>
+      <div class="sub">点击右侧源码中的结构体名，查看声明与字段解释。</div>
+    </div>
+    <div class="scroll" id="structPanel">
+      <div class="empty">当前未选择结构体。可点击右侧源码中的蓝色结构体类型名。</div>
+    </div>
+  </aside>
+  <div class="resizer" data-side="left" aria-hidden="true"></div>
+  <main class="canvas-wrap">
+    <div class="toolbar">
+      <button type="button" data-action="fit">重置视图</button>
+      <button type="button" data-action="zoom-in">放大</button>
+      <button type="button" data-action="zoom-out">缩小</button>
+      <span class="chip">GET /api/v1/admin/promptops/GetPromptOpsRoleListApi</span>
+    </div>
+    <div class="viewport" id="viewport">
+      <svg id="graph" role="img" aria-label="GetPromptOpsRoleListApi 函数调用关系图">
+        <g id="stage"></g>
+      </svg>
+    </div>
+  </main>
+  <div class="resizer" data-side="right" aria-hidden="true"></div>
+  <aside class="side right" aria-label="函数详情">
+    <div class="header">
+      <div class="eyebrow">Function inspector</div>
+      <div class="header-row">
+        <h2 id="fnTitle">GetPromptOpsRoleList</h2>
+        <div class="nav" aria-label="节点查看历史">
+          <button type="button" data-action="history-back" title="后退" disabled>&lt;</button>
+          <button type="button" data-action="history-forward" title="前进" disabled>&gt;</button>
+        </div>
+      </div>
+      <div class="sub" id="fnFile">controllers/prompt_ops_controller.go</div>
+    </div>
+    <div class="scroll" id="fnPanel"></div>
+  </aside>
+
+  <script type="text/plain" id="src-route">promptOps := group.Group("/promptops", permission("promptops:reshape:manage"))
+promptOps.GET("/GetPromptOpsRoleListApi", controllers.GetPromptOpsRoleList)    // 查询角色列表</script>
+  <script type="text/plain" id="src-controller">func GetPromptOpsRoleList(c *gin.Context) {
+	page := promptOpsQueryInt(c, "page", 1)
+	pageSize := promptOpsQueryInt(c, "page_size", 20)
+	roleFilter := c.DefaultQuery("role", "all")
+	keyword := c.Query("keyword")
+	res, err := services.GetPromptOpsRoleList(c.Request.Context(), page, pageSize, roleFilter, keyword)
+	if err != nil {
+		respondPromptOpsErr(c, err)
+		return
+	}
+	Success(c, res)
+}</script>
+  <script type="text/plain" id="src-service">func GetPromptOpsRoleList(ctx context.Context, page, pageSize int, roleFilter string, keyword string) (*models.PromptOpsRoleListVO, error) {
+	page, pageSize = normalizePromptOpsPage(page, pageSize)
+	roles, _, err := normalizePromptOpsRoleFilter(roleFilter)
+	if err != nil {
+		return nil, err
+	}
+	db := promptOpsDB().WithContext(ctx).Model(&models.LegacyCharacter{}).Where("role IN ?", roles)
+	if kw := strings.TrimSpace(keyword); kw != "" {
+		db = db.Where("nickname LIKE ?", "%"+kw+"%")
+	}
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, err
+	}
+	var rows []models.LegacyCharacter
+	if err := db.Order("id desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	items := make([]models.PromptOpsRoleListItem, 0, len(rows))
+	for i := range rows {
+		snap, err := buildPromptOpsRoleSnapshot(ctx, &rows[i])
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, models.PromptOpsRoleListItem{
+			SourceCardID: snap.SourceCardID,
+			StatusText:   snap.StatusText,
+			CanReshape:   snap.CanReshape,
+			Nickname:     snap.Nickname,
+			DisplayImg:    firstNonBlank(snap.CoverImg, snap.Avatar, snap.AvatarThumbnail, snap.RecImg),
+			Completeness: snap.Completeness.Score,
+			MissingFields: snap.Completeness.MissingFields,
+		})
+	}
+	return &models.PromptOpsRoleListVO{List: items, Total: total, Page: page, PageSize: pageSize}, nil
+}</script>
+  <script type="text/plain" id="src-snapshot">func buildPromptOpsRoleSnapshot(ctx context.Context, row *models.LegacyCharacter) (*models.PromptOpsRoleSnapshot, error) {
+	snap := &models.PromptOpsRoleSnapshot{
+		SourceCardID:      row.ID,
+		SourceCharacterID: row.CharacterID,
+		Nickname:          row.Nickname,
+		Gender:            row.Gender,
+		Tags:              splitPromptOpsTags(row.Tags),
+		Avatar:            row.Avatar,
+		PublicIntro:       row.PublicIntro,
+		CharacterSetting:  row.CharacterSetting,
+	}
+	if row.Role == models.LegacyRoleUserCharacter && row.CharacterID > 0 {
+		snap.Scripts = loadPromptOpsScripts(ctx, row.CharacterID)
+		snap.Openings = loadPromptOpsOpenings(ctx, row.CharacterID)
+	}
+	if attr, err := loadPromptOpsCardAttr(ctx, row.ID); err == nil && attr != nil {
+		snap.GenderCode = attr.GenderCode
+		snap.Age = attr.Age
+		snap.CoverImg = strings.TrimSpace(attr.CoverImg)
+		snap.ExtJSON = append(json.RawMessage(nil), attr.ExtJSON...)
+		snap.IntimacySkeletonJSON = append(json.RawMessage(nil), attr.IntimacySkeletonJSON...)
+	}
+	if rows, err := loadPromptOpsCardSections(ctx, row.ID); err == nil {
+		groups, _ := buildPromptOpsSectionGroups(rows)
+		snap.Sections = groups
+	}
+	status := promptOpsRoleStatusInfo(row.Status)
+	snap.CanReshape = status.CanReshape
+	snap.ReshapeBlockedReason = status.BlockedReason
+	snap.StatusText = status.Text
+	snap.Completeness = evaluatePromptOpsCompleteness(snap)
+	snap.SourceHash, _ = hashPromptOpsSnapshot(snap)
+	return snap, nil
+}</script>
+  <script type="text/plain" id="src-helper">func normalizePromptOpsPage(page, pageSize int) (int, int) {
+	if page < 1 { page = 1 }
+	if pageSize < 1 || pageSize > 100 { pageSize = 20 }
+	return page, pageSize
+}
+
+func firstNonBlank(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}</script>
+  <script type="text/plain" id="src-structs">type PromptOpsRoleListVO struct {
+	List     []PromptOpsRoleListItem `json:"list"`
+	Total    int64                   `json:"total"`
+	Page     int                     `json:"page"`
+	PageSize int                     `json:"page_size"`
+}</script>
+  <script type="text/plain" id="struct-LegacyCharacter">type LegacyCharacter struct {
+	ID                        int64     `gorm:"column:id" json:"id"`
+	UserID                    int64     `gorm:"column:user_id" json:"user_id"`
+	Nickname                  string    `gorm:"column:nickname" json:"nickname"`
+	Gender                    string    `gorm:"column:gender" json:"gender"`
+	Tags                      string    `gorm:"column:tags" json:"tags"`
+	Avatar                    string    `gorm:"column:avatar" json:"avatar"`
+	PublicIntro               string    `gorm:"column:public_intro" json:"public_intro"`
+	CharacterSetting          string    `gorm:"column:character_setting" json:"character_setting"`
+	CharacterID               int64     `gorm:"column:character_id" json:"character_id"`
+	Status                    int       `gorm:"column:status" json:"status"`
+	Role                      int       `gorm:"column:role" json:"role"`
+	CreatedAt                 time.Time `gorm:"column:create_time" json:"create_time"`
+	UpdatedAt                 time.Time `gorm:"column:update_time" json:"update_time"`
+}</script>
+  <script type="text/plain" id="struct-PromptOpsRoleSnapshot">type PromptOpsRoleSnapshot struct {
+	SourceCardID         int64  `json:"source_card_id"`
+	SourceCharacterID    int64  `json:"source_character_id"`
+	StatusText           string `json:"status_text"`
+	CanReshape           bool   `json:"can_reshape"`
+	ReshapeBlockedReason string `json:"reshape_blocked_reason"`
+	Nickname             string `json:"nickname"`
+	Gender               string `json:"gender"`
+	Tags                 []string `json:"tags"`
+	CharacterSetting     string `json:"character_setting"`
+	Scripts              []PromptOpsScriptItem `json:"scripts"`
+	Openings             []PromptOpsOpeningItem `json:"openings"`
+	Sections             []PromptOpsSectionGroup `json:"sections,omitempty"`
+	Completeness         PromptOpsCompleteness `json:"completeness"`
+	SourceHash           string `json:"source_hash"`
+}</script>
+  <script type="text/plain" id="struct-PromptOpsRoleListItem">type PromptOpsRoleListItem struct {
+	SourceCardID         int64    `json:"source_card_id"`
+	StatusText           string   `json:"status_text"`
+	CanReshape           bool     `json:"can_reshape"`
+	ReshapeBlockedReason string   `json:"reshape_blocked_reason"`
+	Nickname             string   `json:"nickname"`
+	DisplayImg           string   `json:"display_img"`
+	Completeness         int      `json:"completeness"`
+	MissingFields        []string `json:"missing_fields"`
+}</script>
+  <script type="text/plain" id="struct-PromptOpsRoleListVO">type PromptOpsRoleListVO struct {
+	List     []PromptOpsRoleListItem `json:"list"`
+	Total    int64                   `json:"total"`
+	Page     int                     `json:"page"`
+	PageSize int                     `json:"page_size"`
+}</script>
+  <script type="text/plain" id="struct-PromptOpsCompleteness">type PromptOpsCompleteness struct {
+	Score         int      `json:"score"`
+	RequiredCount int      `json:"required_count"`
+	FilledCount   int      `json:"filled_count"`
+	MissingFields []string `json:"missing_fields"`
+}</script>
+  <script>
+    (() => {
+      const root = document.getElementById('promptops-callgraph');
+      const stage = root.querySelector('#stage');
+      const viewport = root.querySelector('#viewport');
+      const fnPanel = root.querySelector('#fnPanel');
+      const fnTitle = root.querySelector('#fnTitle');
+      const fnFile = root.querySelector('#fnFile');
+      const structPanel = root.querySelector('#structPanel');
+      const structTitle = root.querySelector('#structTitle');
+      const historyBack = root.querySelector('[data-action="history-back"]');
+      const historyForward = root.querySelector('[data-action="history-forward"]');
+
+      const nodes = [
+        { id: 'route', x: 60, y: 270, w: 320, h: 132, kind: 'route', file: 'server/httpsvr/http_server.go', label: 'promptOps.GET', sub: '/GetPromptOpsRoleListApi', src: 'src-route' },
+        { id: 'controller', x: 460, y: 270, w: 330, h: 142, kind: 'controller', file: 'controllers/prompt_ops_controller.go', label: 'GetPromptOpsRoleList', sub: '读取 query 并返回 Success', src: 'src-controller' },
+        { id: 'queryint', x: 460, y: 40, w: 290, h: 124, kind: 'helper', file: 'controllers/common', label: 'promptOpsQueryInt', sub: '解析 page/page_size', src: 'src-helper' },
+        { id: 'service', x: 900, y: 260, w: 360, h: 152, kind: 'service', file: 'services/prompt_ops_workflow.go', label: 'services.GetPromptOpsRoleList', sub: '分页查询角色并组装列表 VO', src: 'src-service' },
+        { id: 'page', x: 900, y: 40, w: 300, h: 124, kind: 'helper', file: 'services/prompt_ops_service.go', label: 'normalizePromptOpsPage', sub: '页码与每页数量兜底', src: 'src-helper' },
+        { id: 'rolefilter', x: 1310, y: 40, w: 340, h: 124, kind: 'helper', file: 'services/prompt_ops_procard_view.go', label: 'normalizePromptOpsRoleFilter', sub: 'role 参数转 role IN 条件', src: 'src-helper' },
+        { id: 'db', x: 1320, y: 260, w: 340, h: 134, kind: 'db', file: 'services/runtime.go', label: 'promptOpsDB + LegacyCharacter', sub: '查 user_customization_character', src: 'src-service' },
+        { id: 'snapshot', x: 1780, y: 250, w: 380, h: 164, kind: 'builder', file: 'services/prompt_ops_workflow.go', label: 'buildPromptOpsRoleSnapshot', sub: '组装旧卡/进阶卡快照', src: 'src-snapshot' },
+        { id: 'tags', x: 1780, y: 20, w: 300, h: 124, kind: 'helper', file: 'services/prompt_ops_service.go', label: 'splitPromptOpsTags', sub: '逗号/斜杠等切标签', src: 'src-snapshot' },
+        { id: 'scripts', x: 2250, y: 20, w: 320, h: 124, kind: 'loader', file: 'services/prompt_ops_service.go', label: 'loadPromptOpsScripts', sub: '加载旧章节', src: 'src-snapshot' },
+        { id: 'openings', x: 2630, y: 20, w: 330, h: 124, kind: 'loader', file: 'services/prompt_ops_service.go', label: 'loadPromptOpsOpenings', sub: '加载旧开场白', src: 'src-snapshot' },
+        { id: 'attr', x: 2250, y: 220, w: 340, h: 132, kind: 'loader', file: 'services/prompt_ops_procard_view.go', label: 'loadPromptOpsCardAttr', sub: '加载 attr 表核心字段', src: 'src-snapshot' },
+        { id: 'sections', x: 2250, y: 440, w: 350, h: 136, kind: 'loader', file: 'services/prompt_ops_procard_view.go', label: 'loadPromptOpsCardSections', sub: '加载分区表 rows', src: 'src-snapshot' },
+        { id: 'groups', x: 2680, y: 440, w: 350, h: 136, kind: 'builder', file: 'services/prompt_ops_procard_view.go', label: 'buildPromptOpsSectionGroups', sub: '分区 rows 聚合成 groups', src: 'src-snapshot' },
+        { id: 'status', x: 2680, y: 220, w: 330, h: 132, kind: 'helper', file: 'services/prompt_ops_status.go', label: 'promptOpsRoleStatusInfo', sub: '状态码转中文与重塑权限', src: 'src-snapshot' },
+        { id: 'complete', x: 3140, y: 220, w: 360, h: 144, kind: 'builder', file: 'services/prompt_ops_workflow.go', label: 'evaluatePromptOpsCompleteness', sub: '计算完整度和缺字段', src: 'src-snapshot' },
+        { id: 'present', x: 3140, y: 450, w: 340, h: 132, kind: 'helper', file: 'services/prompt_ops_procard_view.go', label: 'promptOpsFieldPresent', sub: '逐项判断字段是否存在', src: 'src-snapshot' },
+        { id: 'hash', x: 3600, y: 220, w: 310, h: 132, kind: 'helper', file: 'services/prompt_ops_service.go', label: 'hashPromptOpsSnapshot', sub: 'JSON 快照 SHA-256', src: 'src-snapshot' },
+        { id: 'first', x: 1320, y: 520, w: 300, h: 124, kind: 'helper', file: 'services/prompt_ops_clients.go', label: 'firstNonBlank', sub: '选 display_img', src: 'src-helper' },
+        { id: 'vo', x: 4020, y: 250, w: 320, h: 136, kind: 'return', file: 'models/prompt_ops.go', label: 'PromptOpsRoleListVO', sub: '返回 list/total/page/page_size', src: 'src-structs' }
+      ];
+      const edges = [
+        ['route', 'controller'], ['controller', 'queryint'], ['controller', 'service'],
+        ['service', 'page'], ['service', 'rolefilter'], ['service', 'db'], ['service', 'snapshot'], ['service', 'first'], ['service', 'vo'],
+        ['snapshot', 'tags'], ['snapshot', 'scripts'], ['snapshot', 'openings'], ['snapshot', 'attr'], ['snapshot', 'sections'], ['sections', 'groups'],
+        ['snapshot', 'status'], ['snapshot', 'complete'], ['snapshot', 'hash'], ['complete', 'present']
+      ];
+      const comments = Object.fromEntries(nodes.map(n => [n.id, n.sub]));
+      const callTargets = {
+        route: [{ text: 'controllers.GetPromptOpsRoleList', node: 'controller' }],
+        controller: [
+          { text: 'promptOpsQueryInt', node: 'queryint' },
+          { text: 'services.GetPromptOpsRoleList', node: 'service' }
+        ],
+        service: [
+          { text: 'normalizePromptOpsPage', node: 'page' },
+          { text: 'normalizePromptOpsRoleFilter', node: 'rolefilter' },
+          { text: 'promptOpsDB', node: 'db' },
+          { text: 'models.LegacyCharacter', node: 'db' },
+          { text: 'buildPromptOpsRoleSnapshot', node: 'snapshot' },
+          { text: 'firstNonBlank', node: 'first' },
+          { text: 'models.PromptOpsRoleListVO', node: 'vo' },
+          { text: 'PromptOpsRoleListVO', node: 'vo' }
+        ],
+        snapshot: [
+          { text: 'splitPromptOpsTags', node: 'tags' },
+          { text: 'loadPromptOpsScripts', node: 'scripts' },
+          { text: 'loadPromptOpsOpenings', node: 'openings' },
+          { text: 'loadPromptOpsCardAttr', node: 'attr' },
+          { text: 'loadPromptOpsCardSections', node: 'sections' },
+          { text: 'buildPromptOpsSectionGroups', node: 'groups' },
+          { text: 'promptOpsRoleStatusInfo', node: 'status' },
+          { text: 'evaluatePromptOpsCompleteness', node: 'complete' },
+          { text: 'hashPromptOpsSnapshot', node: 'hash' }
+        ],
+        sections: [{ text: 'buildPromptOpsSectionGroups', node: 'groups' }],
+        complete: [{ text: 'promptOpsFieldPresent', node: 'present' }]
+      };
+      const functions = Object.fromEntries(nodes.map(n => [n.id, {
+        name: n.label,
+        file: n.file,
+        effect: {
+          route: '注册 PromptOps 角色列表接口，把 GET 请求绑定到 controllers.GetPromptOpsRoleList。',
+          controller: '读取分页、角色类型和关键词 query，调用 service 查询角色列表，并统一返回给前端。',
+          service: '角色列表主流程：分页归一化、role 过滤、查询主表、构造快照、压缩成列表 VO。',
+          snapshot: '把主表角色行扩展成 PromptOps 快照，补齐 attr、分区、状态、完整度和 source_hash。',
+          vo: '接口最终返回结构，包含 list、total、page、page_size。'
+        }[n.id] || n.sub,
+        params: n.id === 'controller'
+          ? [['c *gin.Context', 'Gin 请求上下文，提供 query、request context 和响应写入能力。']]
+          : n.id === 'service'
+            ? [['ctx context.Context', '请求生命周期上下文。'], ['page int', '页码。'], ['pageSize int', '每页数量。'], ['roleFilter string', '角色类型筛选。'], ['keyword string', '昵称关键词。']]
+            : n.id === 'snapshot'
+              ? [['ctx context.Context', '数据库查询上下文。'], ['row *models.LegacyCharacter', '角色主表行。']]
+              : [],
+        src: n.src,
+        calls: callTargets[n.id] || []
+      }]));
+      const structs = {
+        LegacyCharacter: { title: 'LegacyCharacter', codeId: 'struct-LegacyCharacter', fields: [
+          ['ID', '主键/卡 ID', 'int64', 'user_customization_character.id，列表项 source_card_id 来源。', '100'],
+          ['Nickname', '角色名', 'string', '列表展示昵称，并进入快照 nickname。', '沈棲'],
+          ['Gender', '性别文本', 'string', '旧主表性别文本。', '女'],
+          ['Tags', '标签', 'string', '逗号等分隔的标签字符串，会拆成 []string。', '深夜书店,慢热'],
+          ['CharacterID', '运行时 ID', 'int64', '旧章节/旧开场白查询键。', '191001'],
+          ['Status', '状态', 'int', '角色状态码，用于控制是否允许重塑。', '5000'],
+          ['Role', '角色类型', 'int', '5=旧角色，6=ProCard。', '5']
+        ]},
+        PromptOpsRoleSnapshot: { title: 'PromptOpsRoleSnapshot', codeId: 'struct-PromptOpsRoleSnapshot', fields: [
+          ['SourceCardID', '来源卡 ID', 'int64', '主表 id。', '100'],
+          ['CanReshape', '能否重塑', 'bool', '根据 role 与 status 推导。', 'true'],
+          ['Sections', '分区组', '[]PromptOpsSectionGroup', 'ProCard 分区聚合结果。', 'section_type=1..11'],
+          ['Completeness', '完整度', 'PromptOpsCompleteness', '完整度评分和缺字段。', 'score=76'],
+          ['SourceHash', '来源哈希', 'string', '快照 SHA-256，用于变更检测。', 'a8f3...']
+        ]},
+        PromptOpsRoleListItem: { title: 'PromptOpsRoleListItem', codeId: 'struct-PromptOpsRoleListItem', fields: [
+          ['SourceCardID', '来源卡 ID', 'int64', '列表行绑定的角色主表 id。', '100'],
+          ['StatusText', '状态文本', 'string', '状态码中文转义，前端直接展示。', '已下架'],
+          ['CanReshape', '能否重塑', 'bool', '控制“一键重塑”按钮是否可点。', 'true'],
+          ['DisplayImg', '展示图', 'string', 'cover/avatar/thumb/rec_img 第一个非空。', 'https://...']
+        ]},
+        PromptOpsRoleListVO: { title: 'PromptOpsRoleListVO', codeId: 'struct-PromptOpsRoleListVO', fields: [
+          ['List', '角色列表', '[]PromptOpsRoleListItem', '当前页角色列表。', '[{source_card_id:100}]'],
+          ['Total', '总数', 'int64', '筛选条件下的总行数。', '128'],
+          ['Page', '页码', 'int', '归一化后的当前页。', '1'],
+          ['PageSize', '每页数量', 'int', '归一化后的每页数量。', '20']
+        ]},
+        PromptOpsCompleteness: { title: 'PromptOpsCompleteness', codeId: 'struct-PromptOpsCompleteness', fields: [
+          ['Score', '完整度分数', 'int', 'filled / required * 100。', '76'],
+          ['MissingFields', '缺失字段', '[]string', '未满足的字段 key。', '["attr.cover_img"]']
+        ]}
+      };
+      const structNames = Object.keys(structs);
+      const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+      const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+      const escapeRegExp = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const codeText = id => document.getElementById(id)?.textContent.trim() || '';
+      function linkCode(fnId, code) {
+        const fn = functions[fnId];
+        const links = new Map();
+        (fn?.calls || []).forEach(item => links.set(item.text, { type: 'function', target: item.node }));
+        structNames.forEach(name => links.set(name, { type: 'struct', target: name }));
+        const keys = [...links.keys()].sort((a, b) => b.length - a.length);
+        if (!keys.length) return esc(code);
+        const pattern = new RegExp(keys.map(escapeRegExp).join('|'), 'g');
+        return esc(code).replace(pattern, match => {
+          const link = links.get(match);
+          if (!link) return match;
+          if (link.type === 'function') {
+            return `<span class="function-link" data-node="${link.target}">${match}</span>`;
+          }
+          return `<span class="struct-link" data-struct="${link.target}">${match}</span>`;
+        });
+      }
+      function updateNodeComment(id, value) {
+        comments[id] = value;
+        const node = byId[id];
+        if (node) node.sub = value;
+        const card = root.querySelector(`.node[data-id="${id}"] .node-sub`);
+        if (card) {
+          card.textContent = value;
+          card.setAttribute('title', value);
+        }
+      }
+      const history = [];
+      let historyIndex = -1;
+      function setHistoryButtons() {
+        historyBack.disabled = historyIndex <= 0;
+        historyForward.disabled = historyIndex >= history.length - 1;
+      }
+      function renderFunction(id, skipHistory = false) {
+        const fn = functions[id];
+        if (!fn) return;
+        if (!skipHistory && history[historyIndex] !== id) {
+          history.splice(historyIndex + 1);
+          history.push(id);
+          historyIndex = history.length - 1;
+        }
+        fnTitle.textContent = fn.name;
+        fnFile.textContent = fn.file;
+        fnPanel.innerHTML = `
+          <h3>函数注释</h3>
+          <textarea class="function-comment" data-comment-id="${id}" spellcheck="false">${esc(comments[id] ?? '')}</textarea>
+          <h3>函数作用</h3>
+          <div class="item">${esc(fn.effect)}</div>
+          <h3>接收参数</h3>
+          ${fn.params.length ? fn.params.map(([name, desc]) => `<div class="item"><b>${esc(name)}</b><br>${esc(desc)}</div>`).join('') : '<div class="item">无显式参数。</div>'}
+          <h3>源代码</h3>
+          <pre><code>${linkCode(id, codeText(fn.src))}</code></pre>
+        `;
+        root.querySelectorAll('.node').forEach(n => n.classList.toggle('active', n.dataset.id === id));
+        root.querySelectorAll('.edge, .mid-arrow, .edge-dot').forEach(edge => edge.classList.toggle('active', edge.dataset.from === id || edge.dataset.to === id));
+        edgePaths.forEach(edge => {
+          const active = edge.path.classList.contains('active');
+          edge.fromDot.setAttribute('r', active ? '6.8' : '5.5');
+          edge.toDot.setAttribute('r', active ? '6.8' : '5.5');
+        });
+        setHistoryButtons();
+      }
+      function renderStruct(name) {
+        const st = structs[name];
+        if (!st) return;
+        structTitle.textContent = st.title;
+        structPanel.innerHTML = `
+          <h3>结构体代码</h3>
+          <pre><code>${esc(codeText(st.codeId))}</code></pre>
+          <h3>字段说明</h3>
+          <table><thead><tr><th>字段名</th><th>中文名</th><th>类型</th><th>解释</th><th>举例</th></tr></thead>
+          <tbody>${st.fields.map(row => `<tr>${row.map(cell => `<td>${esc(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+        `;
+      }
+      function defaultPort(node, other) {
+        const ac = { x: node.x + node.w / 2, y: node.y + node.h / 2 };
+        const bc = { x: other.x + other.w / 2, y: other.y + other.h / 2 };
+        const dx = bc.x - ac.x;
+        const dy = bc.y - ac.y;
+        if (Math.abs(dx) >= Math.abs(dy)) return { side: dx >= 0 ? 'right' : 'left', t: .5 };
+        return { side: dy >= 0 ? 'bottom' : 'top', t: .5 };
+      }
+      function portPoint(node, port) {
+        const t = Math.max(0, Math.min(1, port.t));
+        if (port.side === 'left') return { x: node.x, y: node.y + node.h * t };
+        if (port.side === 'right') return { x: node.x + node.w, y: node.y + node.h * t };
+        if (port.side === 'top') return { x: node.x + node.w * t, y: node.y };
+        return { x: node.x + node.w * t, y: node.y + node.h };
+      }
+      function nearestPort(node, x, y) {
+        const distances = [
+          { side: 'left', d: Math.abs(x - node.x), t: (y - node.y) / node.h },
+          { side: 'right', d: Math.abs(x - (node.x + node.w)), t: (y - node.y) / node.h },
+          { side: 'top', d: Math.abs(y - node.y), t: (x - node.x) / node.w },
+          { side: 'bottom', d: Math.abs(y - (node.y + node.h)), t: (x - node.x) / node.w }
+        ];
+        const best = distances.sort((a, b) => a.d - b.d)[0];
+        return { side: best.side, t: Math.max(0, Math.min(1, best.t)) };
+      }
+      function tangentFor(port, p1, p2) {
+        const distance = Math.max(28, Math.min(110, Math.hypot(p2.x - p1.x, p2.y - p1.y) * .18));
+        if (port.side === 'left') return { x: -distance, y: 0 };
+        if (port.side === 'right') return { x: distance, y: 0 };
+        if (port.side === 'top') return { x: 0, y: -distance };
+        return { x: 0, y: distance };
+      }
+      function intersects(x1, y1, x2, y2, n, pad = 24) {
+        const left = n.x - pad, right = n.x + n.w + pad, top = n.y - pad, bottom = n.y + n.h + pad;
+        if (x1 >= left && x1 <= right && y1 >= top && y1 <= bottom) return false;
+        if (x2 >= left && x2 <= right && y2 >= top && y2 <= bottom) return false;
+        return !(Math.max(x1, x2) < left || Math.min(x1, x2) > right || Math.max(y1, y2) < top || Math.min(y1, y2) > bottom);
+      }
+      function edgeGeometry(edge) {
+        const a = byId[edge.from], b = byId[edge.to];
+        const p1 = portPoint(a, edge.fromPort);
+        const p2 = portPoint(b, edge.toPort);
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const distance = Math.max(1, Math.hypot(dx, dy));
+        const direct = { x: dx * .32, y: dy * .32 };
+        const normal = { x: -dy / distance, y: dx / distance };
+        const blocked = nodes.some(n => n.id !== edge.from && n.id !== edge.to && intersects(p1.x, p1.y, p2.x, p2.y, n));
+        const bend = blocked ? Math.max(-34, Math.min(34, dy * .12)) : 0;
+        const t1 = tangentFor(edge.fromPort, p1, p2);
+        const t2 = tangentFor(edge.toPort, p2, p1);
+        const c1 = {
+          x: p1.x + direct.x * .72 + t1.x * .28 + normal.x * bend,
+          y: p1.y + direct.y * .72 + t1.y * .28 + normal.y * bend
+        };
+        const c2 = {
+          x: p2.x - direct.x * .72 + t2.x * .28 + normal.x * bend,
+          y: p2.y - direct.y * .72 + t2.y * .28 + normal.y * bend
+        };
+        const d = `M${p1.x},${p1.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${p2.x},${p2.y}`;
+        const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+        return { d, p1, p2, mid, angle };
+      }
+      const gEdges = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const gNodes = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const gPorts = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      stage.append(gEdges, gNodes, gPorts);
+      const edgePaths = [];
+      edges.forEach(([from, to]) => {
+        const a = byId[from], b = byId[to];
+        const edge = { from, to, fromPort: defaultPort(a, b), toPort: defaultPort(b, a) };
+        const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const midArrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const fromDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        const toDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        hitPath.dataset.from = from;
+        hitPath.dataset.to = to;
+        hitPath.setAttribute('class', 'edge-hit');
+        path.dataset.from = from;
+        path.dataset.to = to;
+        path.setAttribute('class', 'edge');
+        midArrow.dataset.from = from;
+        midArrow.dataset.to = to;
+        midArrow.setAttribute('class', 'mid-arrow');
+        midArrow.setAttribute('d', 'M-7,-5 L6,0 L-7,5 Z');
+        fromDot.dataset.from = from;
+        fromDot.dataset.to = to;
+        toDot.dataset.from = from;
+        toDot.dataset.to = to;
+        fromDot.setAttribute('class', 'edge-dot');
+        toDot.setAttribute('class', 'edge-dot');
+        fromDot.setAttribute('r', '5.5');
+        toDot.setAttribute('r', '5.5');
+        gEdges.appendChild(hitPath);
+        gEdges.appendChild(path);
+        gEdges.appendChild(midArrow);
+        gPorts.appendChild(fromDot);
+        gPorts.appendChild(toDot);
+        const edgeRecord = { ...edge, hitPath, path, midArrow, fromDot, toDot };
+        edgePaths.push(edgeRecord);
+        [hitPath, path, midArrow, fromDot, toDot].forEach(el => {
+          el.addEventListener('click', e => {
+            e.stopPropagation();
+            selectEdge(edgeRecord);
+          });
+        });
+        attachPortDrag(edgeRecord, fromDot, 'from');
+        attachPortDrag(edgeRecord, toDot, 'to');
+      });
+      function distributeInitialPorts() {
+        const groups = new Map();
+        edgePaths.forEach(edge => {
+          [
+            { endpoint: 'from', nodeId: edge.from, port: edge.fromPort },
+            { endpoint: 'to', nodeId: edge.to, port: edge.toPort }
+          ].forEach(item => {
+            const key = `${item.nodeId}:${item.port.side}`;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push({ edge, endpoint: item.endpoint, port: item.port });
+          });
+        });
+        groups.forEach(items => {
+          if (items.length <= 1) return;
+          items
+            .sort((a, b) => {
+              const ao = byId[a.endpoint === 'from' ? a.edge.to : a.edge.from];
+              const bo = byId[b.endpoint === 'from' ? b.edge.to : b.edge.from];
+              return a.port.side === 'left' || a.port.side === 'right' ? ao.y - bo.y : ao.x - bo.x;
+            })
+            .forEach((item, index) => {
+              item.port.t = (index + 1) / (items.length + 1);
+            });
+        });
+      }
+      distributeInitialPorts();
+      function selectEdge(selected) {
+        edgePaths.forEach(edge => {
+          const active = edge === selected;
+          edge.path.classList.toggle('active', active);
+          edge.midArrow.classList.toggle('active', active);
+          edge.fromDot.classList.toggle('active', active);
+          edge.toDot.classList.toggle('active', active);
+          edge.fromDot.setAttribute('r', active ? '6.8' : '5.5');
+          edge.toDot.setAttribute('r', active ? '6.8' : '5.5');
+        });
+        gEdges.appendChild(selected.hitPath);
+        gEdges.appendChild(selected.path);
+        gEdges.appendChild(selected.midArrow);
+        gPorts.appendChild(selected.fromDot);
+        gPorts.appendChild(selected.toDot);
+      }
+      function graphPoint(e) {
+        const rect = viewport.getBoundingClientRect();
+        return { x: (e.clientX - rect.left - tx) / scale, y: (e.clientY - rect.top - ty) / scale };
+      }
+      function attachPortDrag(edge, dot, endpoint) {
+        dot.addEventListener('pointerdown', e => {
+          e.stopPropagation();
+          selectEdge(edge);
+          dot.classList.add('dragging');
+          dot.setPointerCapture(e.pointerId);
+          const move = ev => {
+            const p = graphPoint(ev);
+            const node = byId[endpoint === 'from' ? edge.from : edge.to];
+            edge[endpoint === 'from' ? 'fromPort' : 'toPort'] = nearestPort(node, p.x, p.y);
+            updateEdges();
+          };
+          const up = ev => {
+            dot.classList.remove('dragging');
+            try { dot.releasePointerCapture(ev.pointerId); } catch {}
+            dot.removeEventListener('pointermove', move);
+            dot.removeEventListener('pointerup', up);
+          };
+          dot.addEventListener('pointermove', move);
+          dot.addEventListener('pointerup', up);
+        });
+      }
+      function updateEdges() {
+        edgePaths.forEach(edge => {
+          const geo = edgeGeometry(edge);
+          edge.hitPath.setAttribute('d', geo.d);
+          edge.path.setAttribute('d', geo.d);
+          edge.fromDot.setAttribute('cx', geo.p1.x);
+          edge.fromDot.setAttribute('cy', geo.p1.y);
+          edge.toDot.setAttribute('cx', geo.p2.x);
+          edge.toDot.setAttribute('cy', geo.p2.y);
+          const length = edge.path.getTotalLength();
+          const mid = edge.path.getPointAtLength(length / 2);
+          const before = edge.path.getPointAtLength(Math.max(0, length / 2 - 2));
+          const after = edge.path.getPointAtLength(Math.min(length, length / 2 + 2));
+          const angle = Math.atan2(after.y - before.y, after.x - before.x) * 180 / Math.PI;
+          edge.midArrow.setAttribute('transform', `translate(${mid.x},${mid.y}) rotate(${angle})`);
+        });
+      }
+      nodes.forEach(n => {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('class', 'node');
+        group.dataset.id = n.id;
+        group.setAttribute('transform', `translate(${n.x},${n.y})`);
+        group.innerHTML = `
+          <rect class="select-ring" x="-7" y="-7" width="${n.w + 14}" height="${n.h + 14}" rx="12"></rect>
+          <rect class="node-frame" width="${n.w}" height="${n.h}" rx="8"></rect>
+          <foreignObject x="0" y="0" width="${n.w}" height="${n.h}">
+            <div class="node-card" xmlns="http://www.w3.org/1999/xhtml">
+              <div class="kind">${esc(n.kind)}</div>
+              <div class="label" title="${esc(n.label)}">${esc(n.label)}</div>
+              <div class="file" title="${esc(n.file)}">${esc(n.file)}</div>
+              <div class="node-sub" title="${esc(n.sub)}">${esc(n.sub)}</div>
+            </div>
+          </foreignObject>
+        `;
+        let nodeDrag = null;
+        group.addEventListener('pointerdown', e => {
+          e.stopPropagation();
+          nodeDrag = { pointerId: e.pointerId, sx: e.clientX, sy: e.clientY, x: n.x, y: n.y, moved: false };
+          group.classList.add('dragging');
+          group.setPointerCapture(e.pointerId);
+        });
+        group.addEventListener('pointermove', e => {
+          if (!nodeDrag) return;
+          const dx = (e.clientX - nodeDrag.sx) / scale;
+          const dy = (e.clientY - nodeDrag.sy) / scale;
+          if (Math.abs(dx) > 1 || Math.abs(dy) > 1) nodeDrag.moved = true;
+          n.x = nodeDrag.x + dx;
+          n.y = nodeDrag.y + dy;
+          group.setAttribute('transform', `translate(${n.x},${n.y})`);
+          updateEdges();
+        });
+        group.addEventListener('pointerup', e => {
+          if (!nodeDrag) return;
+          const select = !nodeDrag.moved;
+          group.classList.remove('dragging');
+          try { group.releasePointerCapture(e.pointerId); } catch {}
+          nodeDrag = null;
+          if (select) renderFunction(n.id);
+        });
+        gNodes.appendChild(group);
+      });
+      updateEdges();
+      let tx = 30, ty = 160, scale = .34;
+      function applyTransform() { stage.setAttribute('transform', `translate(${tx},${ty}) scale(${scale})`); }
+      function fit() { tx = 30; ty = 160; scale = .34; applyTransform(); }
+      applyTransform();
+      let pan = null;
+      viewport.addEventListener('pointerdown', e => {
+        if (e.target.closest && e.target.closest('.node')) return;
+        pan = { x: e.clientX, y: e.clientY, tx, ty };
+        viewport.classList.add('dragging');
+        viewport.setPointerCapture(e.pointerId);
+      });
+      viewport.addEventListener('pointermove', e => {
+        if (!pan) return;
+        tx = pan.tx + e.clientX - pan.x;
+        ty = pan.ty + e.clientY - pan.y;
+        applyTransform();
+      });
+      viewport.addEventListener('pointerup', e => {
+        pan = null;
+        viewport.classList.remove('dragging');
+        try { viewport.releasePointerCapture(e.pointerId); } catch {}
+      });
+      viewport.addEventListener('wheel', e => {
+        e.preventDefault();
+        const old = scale;
+        scale = Math.max(.18, Math.min(1.25, scale * (e.deltaY > 0 ? .9 : 1.1)));
+        const rect = viewport.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        tx = mx - (mx - tx) * (scale / old);
+        ty = my - (my - ty) * (scale / old);
+        applyTransform();
+      }, { passive: false });
+      root.querySelector('[data-action="fit"]').addEventListener('click', fit);
+      root.querySelector('[data-action="zoom-in"]').addEventListener('click', () => { scale = Math.min(1.25, scale * 1.16); applyTransform(); });
+      root.querySelector('[data-action="zoom-out"]').addEventListener('click', () => { scale = Math.max(.18, scale / 1.16); applyTransform(); });
+      historyBack.addEventListener('click', () => { if (historyIndex > 0) renderFunction(history[--historyIndex], true); });
+      historyForward.addEventListener('click', () => { if (historyIndex < history.length - 1) renderFunction(history[++historyIndex], true); });
+      root.addEventListener('click', e => {
+        const functionEl = e.target.closest('.function-link');
+        if (functionEl && functionEl.dataset.node) {
+          renderFunction(functionEl.dataset.node);
+          return;
+        }
+        const structEl = e.target.closest('.struct-link');
+        if (structEl && structEl.dataset.struct) renderStruct(structEl.dataset.struct);
+      });
+      root.addEventListener('input', e => {
+        const commentEl = e.target.closest('.function-comment');
+        if (!commentEl || !commentEl.dataset.commentId) return;
+        updateNodeComment(commentEl.dataset.commentId, commentEl.value);
+      });
+      root.querySelectorAll('.resizer').forEach(handle => {
+        handle.addEventListener('pointerdown', e => {
+          const side = handle.dataset.side;
+          const startX = e.clientX;
+          const styles = getComputedStyle(root);
+          const startLeft = parseInt(styles.getPropertyValue('--left-width')) || 360;
+          const startRight = parseInt(styles.getPropertyValue('--right-width')) || 520;
+          const rootWidth = root.getBoundingClientRect().width;
+          const minPanel = 40;
+          const minCanvas = 180;
+          const maxCombined = Math.max(minPanel * 2, rootWidth - 16 - minCanvas);
+          handle.setPointerCapture(e.pointerId);
+          const move = ev => {
+            const delta = ev.clientX - startX;
+            let left = side === 'left' ? startLeft + delta : startLeft;
+            let right = side === 'right' ? startRight - delta : startRight;
+            left = Math.max(minPanel, left);
+            right = Math.max(minPanel, right);
+            const combined = left + right;
+            if (combined > maxCombined) {
+              const overflow = combined - maxCombined;
+              if (side === 'left') right = Math.max(minPanel, right - overflow);
+              else left = Math.max(minPanel, left - overflow);
+            }
+            root.style.setProperty('--left-width', `${left}px`);
+            root.style.setProperty('--right-width', `${right}px`);
+          };
+          const up = ev => {
+            try { handle.releasePointerCapture(ev.pointerId); } catch {}
+            handle.removeEventListener('pointermove', move);
+            handle.removeEventListener('pointerup', up);
+          };
+          handle.addEventListener('pointermove', move);
+          handle.addEventListener('pointerup', up);
+        });
+      });
+      renderFunction('controller');
+    })();
+  </script>
+</div>
+</body>
+</html>

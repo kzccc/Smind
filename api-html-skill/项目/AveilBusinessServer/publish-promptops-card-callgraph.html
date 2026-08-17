@@ -1,0 +1,1164 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PublishPromptOpsCardInnerApi 函数调用图</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; background: #f5f6f7; }
+    #promptops-callgraph {
+      --bg: #f5f6f7;
+      --panel: #ffffff;
+      --panel-soft: #f8f9fa;
+      --line: #d8dde3;
+      --line-strong: #aeb7c2;
+      --text: #1f2933;
+      --muted: #697586;
+      --accent: #344054;
+      --blue: #2f6f9f;
+      --red: #c0392b;
+      height: 100vh;
+      min-height: 720px;
+      display: grid;
+      grid-template-columns: var(--left-width, 360px) 8px minmax(180px, 1fr) 8px var(--right-width, 520px);
+      overflow: hidden;
+      color: var(--text);
+      font-family: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Segoe UI", sans-serif;
+      background: var(--bg);
+    }
+    #promptops-callgraph * { box-sizing: border-box; }
+    #promptops-callgraph .side {
+      min-width: 40px;
+      background: var(--panel);
+      border-color: var(--line);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #promptops-callgraph .left { border-right: 1px solid var(--line); }
+    #promptops-callgraph .right { border-left: 1px solid var(--line); }
+    #promptops-callgraph .resizer {
+      cursor: col-resize;
+      background: linear-gradient(90deg, transparent 3px, var(--line-strong) 3px, var(--line-strong) 5px, transparent 5px);
+    }
+    #promptops-callgraph .header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fafafa;
+    }
+    #promptops-callgraph .eyebrow {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    #promptops-callgraph .header-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    #promptops-callgraph h1,
+    #promptops-callgraph h2,
+    #promptops-callgraph h3 {
+      margin: 0;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+    #promptops-callgraph h2 {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-size: 15px;
+    }
+    #promptops-callgraph h3 {
+      margin-top: 18px;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 13px;
+    }
+    #promptops-callgraph .sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 8px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+    #promptops-callgraph .nav {
+      display: flex;
+      gap: 4px;
+      flex: 0 0 auto;
+    }
+    #promptops-callgraph button,
+    #promptops-callgraph .chip {
+      border: 1px solid var(--line-strong);
+      color: var(--text);
+      background: #fff;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 12px;
+      border-radius: 4px;
+    }
+    #promptops-callgraph button { cursor: pointer; }
+    #promptops-callgraph button:hover { background: #f0f2f4; }
+    #promptops-callgraph button:disabled { opacity: .35; cursor: not-allowed; }
+    #promptops-callgraph .nav button { width: 28px; height: 26px; padding: 0; line-height: 1; }
+    #promptops-callgraph .scroll { overflow: auto; padding: 14px 16px 24px; }
+    #promptops-callgraph .canvas-wrap {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(174, 183, 194, .22) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(174, 183, 194, .18) 1px, transparent 1px),
+        #f8f9fa;
+      background-size: 36px 36px;
+    }
+    #promptops-callgraph .toolbar {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      z-index: 5;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      max-width: calc(100% - 28px);
+    }
+    #promptops-callgraph .viewport {
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+    }
+    #promptops-callgraph .viewport.dragging { cursor: grabbing; }
+    #promptops-callgraph svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      user-select: none;
+    }
+    #promptops-callgraph .edge {
+      stroke: #9aa4b2;
+      stroke-width: 1.35;
+      fill: none;
+      cursor: pointer;
+      pointer-events: stroke;
+    }
+    #promptops-callgraph .edge-hit {
+      stroke: transparent;
+      stroke-width: 16;
+      fill: none;
+      cursor: pointer;
+      pointer-events: stroke;
+    }
+    #promptops-callgraph .edge.active {
+      stroke: var(--red);
+      stroke-width: 3.2;
+    }
+    #promptops-callgraph .edge-dot {
+      fill: #fff;
+      stroke: #7d8794;
+      stroke-width: 1.6;
+      cursor: grab;
+    }
+    #promptops-callgraph .edge-dot.active {
+      stroke: var(--red);
+      stroke-width: 2.6;
+    }
+    #promptops-callgraph .edge-dot:hover,
+    #promptops-callgraph .edge-dot.dragging {
+      stroke: var(--red);
+      stroke-width: 2.2;
+      cursor: grabbing;
+    }
+    #promptops-callgraph .mid-arrow {
+      fill: #7d8794;
+      pointer-events: none;
+    }
+    #promptops-callgraph .edge.active + .mid-arrow,
+    #promptops-callgraph .mid-arrow.active {
+      fill: var(--red);
+    }
+    #promptops-callgraph .node { cursor: grab; }
+    #promptops-callgraph .node.dragging { cursor: grabbing; }
+    #promptops-callgraph .node-frame {
+      fill: #fff;
+      stroke: var(--line-strong);
+      stroke-width: 1.2;
+      filter: drop-shadow(0 10px 22px rgba(31, 41, 51, .08));
+    }
+    #promptops-callgraph .select-ring {
+      fill: none;
+      stroke: var(--red);
+      stroke-width: 2.2;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #promptops-callgraph .node.active .select-ring { opacity: 1; }
+    #promptops-callgraph .node-card {
+      height: 100%;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: hidden;
+      background: #fff;
+      border-radius: 8px;
+      line-height: 1.3;
+    }
+    #promptops-callgraph .kind {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    #promptops-callgraph .label {
+      color: #101828;
+      font-size: 15px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #promptops-callgraph .file {
+      color: var(--blue);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #promptops-callgraph .node-sub {
+      margin-top: auto;
+      color: var(--muted);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #promptops-callgraph code,
+    #promptops-callgraph pre {
+      font-family: Consolas, "Microsoft YaHei", "微软雅黑", monospace;
+    }
+    #promptops-callgraph pre {
+      margin: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: #f7f8fa;
+      color: #26313d;
+      overflow: auto;
+      line-height: 1.5;
+      font-size: 12px;
+      white-space: pre;
+    }
+    #promptops-callgraph .item {
+      border: 1px solid var(--line);
+      padding: 10px;
+      background: #fafafa;
+      font-size: 12px;
+      line-height: 1.55;
+      margin-bottom: 8px;
+    }
+    #promptops-callgraph .item b { color: var(--accent); font-weight: 600; }
+    #promptops-callgraph .struct-link,
+    #promptops-callgraph .function-link {
+      color: var(--blue);
+      border-bottom: 1px dotted var(--blue);
+      cursor: pointer;
+      background: transparent;
+      padding: 0;
+    }
+    #promptops-callgraph .function-link {
+      color: var(--red);
+      border-bottom-color: var(--red);
+    }
+    #promptops-callgraph .struct-link:hover,
+    #promptops-callgraph .function-link:hover {
+      background: #eef2f6;
+    }
+    #promptops-callgraph .function-comment {
+      width: 100%;
+      min-height: 92px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      resize: vertical;
+      background: #fff;
+      color: var(--text);
+      font: 13px/1.6 "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+      outline: none;
+    }
+    #promptops-callgraph .function-comment:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(192, 57, 43, .10);
+    }
+    #promptops-callgraph table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    #promptops-callgraph th,
+    #promptops-callgraph td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 6px;
+      vertical-align: top;
+      text-align: left;
+    }
+    #promptops-callgraph th { color: var(--accent); font-weight: 600; }
+    #promptops-callgraph .empty {
+      color: var(--muted);
+      border: 1px dashed var(--line-strong);
+      padding: 14px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    @media (max-width: 980px) {
+      #promptops-callgraph { grid-template-columns: 1fr; height: auto; }
+      #promptops-callgraph .resizer { display: none; }
+      #promptops-callgraph .canvas-wrap { height: 620px; }
+      #promptops-callgraph .side { max-height: 520px; }
+    }
+  </style>
+</head>
+<body>
+<div id="promptops-callgraph">
+  <aside class="side left" aria-label="结构体详情">
+    <div class="header">
+      <div class="eyebrow">Struct inspector</div>
+      <h2 id="structTitle">结构体详情</h2>
+      <div class="sub">点击右侧源码中的结构体名，查看声明与字段解释。</div>
+    </div>
+    <div class="scroll" id="structPanel">
+      <div class="empty">当前未选择结构体。可点击右侧源码中的蓝色结构体类型名。</div>
+    </div>
+  </aside>
+  <div class="resizer" data-side="left" aria-hidden="true"></div>
+  <main class="canvas-wrap">
+    <div class="toolbar">
+      <button type="button" data-action="fit">重置视图</button>
+      <button type="button" data-action="zoom-in">放大</button>
+      <button type="button" data-action="zoom-out">缩小</button>
+      <span class="chip">POST /api/procard/inner/PublishPromptOpsCardInnerApi</span>
+    </div>
+    <div class="viewport" id="viewport">
+      <svg id="graph" role="img" aria-label="PublishPromptOpsCardInnerApi 函数调用关系图">
+        <g id="stage"></g>
+      </svg>
+    </div>
+  </main>
+  <div class="resizer" data-side="right" aria-hidden="true"></div>
+  <aside class="side right" aria-label="函数详情">
+    <div class="header">
+      <div class="eyebrow">Function inspector</div>
+      <div class="header-row">
+        <h2 id="fnTitle">PublishPromptOpsCardInnerApi</h2>
+        <div class="nav" aria-label="节点查看历史">
+          <button type="button" data-action="history-back" title="后退" disabled>&lt;</button>
+          <button type="button" data-action="history-forward" title="前进" disabled>&gt;</button>
+        </div>
+      </div>
+      <div class="sub" id="fnFile">app/a_controller/api/prompt_ops_inner_api.go</div>
+    </div>
+    <div class="scroll" id="fnPanel"></div>
+  </aside>
+
+  <script type="text/plain" id="src-route">// 内部接口（服务间，内部密钥鉴权，不走 firebase）
+{Method: "POST", Path: "/api/procard/inner/PublishPromptOpsCardInnerApi", Handler: api.PublishPromptOpsCardInnerApi, NeedAuth: false},</script>
+  <script type="text/plain" id="src-controller">func PublishPromptOpsCardInnerApi(c *gin.Context) {
+	if !procardInnerAuthorized(c) {
+		return
+	}
+	var req publishPromptOpsCardInnerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.Error(c, common.CodeInvalidParam, "参数错误: "+err.Error())
+		return
+	}
+	res, err := csProcard.PublishPromptOpsCardControls(c.Request.Context(), req.OperatorID, req.CardID)
+	if err != nil {
+		respondProCardErr(c, "PublishPromptOpsCardInnerApi", err)
+		return
+	}
+	common.Success(c, res)
+}</script>
+  <script type="text/plain" id="src-auth">func procardInnerAuthorized(c *gin.Context) bool {
+	cfg := zConfig.GetBCommonConfig()
+	if cfg == nil {
+		common.Error(c, common.CodeAuthFailed, "内部接口鉴权失败")
+		return false
+	}
+	uuid := c.Request.Header.Get("uuid")
+	timestamp := c.Request.Header.Get("timestamp")
+	nonce := c.Request.Header.Get("nonce")
+	token := c.Request.Header.Get("token")
+	if uuid == "" || token == "" {
+		common.Error(c, common.CodeAuthFailed, "内部接口鉴权失败")
+		return false
+	}
+	data := url.Values{}
+	data.Set("uuid", uuid)
+	data.Set("timestamp", timestamp)
+	data.Set("nonce", nonce)
+	for _, caller := range procardInnerCallerCredentials(cfg) {
+		if uuid != caller.ServerName {
+			continue
+		}
+		if networkAveilchat.VerifyHMAC(caller.ServerSecret, data.Encode(), token) {
+			return true
+		}
+		common.Error(c, common.CodeAuthFailed, "内部接口鉴权失败")
+		return false
+	}
+	common.Error(c, common.CodeAuthFailed, "内部接口鉴权失败")
+	return false
+}</script>
+  <script type="text/plain" id="src-controls">func PublishPromptOpsCardControls(ctx context.Context, operatorId, cardID int64) (*mdProcard.SubmitResult, error) {
+	release, err := acquireProCardMutationLock(ctx, cardID)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	return mdProcard.PublishPromptOpsCard(ctx, operatorId, cardID)
+}</script>
+  <script type="text/plain" id="src-lock">func acquireProCardMutationLock(ctx context.Context, cardId int64) (func(), error) {
+	return acquireProCardMutationLockWithFactory(ctx, cardId, newProCardMutationLocker)
+}
+
+func acquireProCardMutationLockWithFactory(
+	ctx context.Context,
+	cardId int64,
+	factory proCardMutationLockFactory,
+) (func(), error) {
+	if cardId <= 0 {
+		return func() {}, nil
+	}
+	lockKey := redisProcard.LockCardMutationKey(cardId)
+	lockCtx, cancel := context.WithCancel(ctx)
+	lock := factory(lockKey, proCardMutationLockConfig{
+		TTL:       proCardMutationLockTTL,
+		AutoRenew: true,
+	})
+	deadline := time.Now().Add(proCardMutationLockWait)
+	for {
+		err := lock.Lock(lockCtx)
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, redislock.ErrLockFailed) {
+			cancel()
+			return nil, err
+		}
+		if proCardMutationLockWait <= 0 || time.Now().Add(proCardMutationLockPoll).After(deadline) {
+			cancel()
+			return nil, fmt.Errorf("获取角色卡变更锁超时 cardId=%d", cardId)
+		}
+		time.Sleep(proCardMutationLockPoll)
+	}
+	return func() {
+		cancel()
+		if err := lock.Unlock(); err != nil {
+			ljlog.LogError("acquireProCardMutationLock", "释放锁失败: "+err.Error())
+		}
+	}, nil
+}</script>
+  <script type="text/plain" id="src-model">func PublishPromptOpsCard(ctx context.Context, operatorID, cardID int64) (*SubmitResult, error) {
+	if operatorID <= 0 || cardID <= 0 {
+		return nil, NewBizError(400, "operator_id 和 card_id 必须大于 0")
+	}
+	var main dbCreation.UserCustomizationCharacter
+	if err := mysql.GetDB(ctx).Select("user_id").Where("id = ?", cardID).First(&main).Error; err != nil {
+		return nil, err
+	}
+	return SubmitProCardReview(ctx, main.UserId, cardID, 0, SubmitOptions{
+		TencentModerationEnabled: false,
+	})
+}</script>
+  <script type="text/plain" id="src-db">var main dbCreation.UserCustomizationCharacter
+if err := mysql.GetDB(ctx).Select("user_id").Where("id = ?", cardID).First(&main).Error; err != nil {
+	return nil, err
+}</script>
+  <script type="text/plain" id="src-submit">func SubmitProCardReview(ctx context.Context, userId int, cardId int64, editVersion int, options SubmitOptions) (*SubmitResult, error) {
+	execution := newCardSubmitExecution(ctx, cardSubmitInput{
+		UserID: userId,
+		Request: &reqbind.SubmitProCardReviewRequest{
+			CardId: cardId, EditVersion: editVersion, Role: enums.RoleTagTypeDefProCard,
+		},
+		Options: options,
+	})
+	return execution.Execute()
+}</script>
+  <script type="text/plain" id="src-execution">func (execution *cardSubmitExecution) Execute() (*SubmitResult, error) {
+	execution.prepare()       // 校验 role 必须为进阶卡(6)，拒绝旧角色(5)
+	if execution.err != nil {
+		return execution.finalize()
+	}
+	execution.runBuild()      // 执行构建计划（如有 name_card 等构建数据）
+	if execution.err != nil {
+		return execution.finalize()
+	}
+	execution.runPublish()    // 执行发布计划：锁→校验→快照→自动过审→同步 IM
+	return execution.finalize() // 锁释放 + 补偿决策 + 形成稳定结果
+}</script>
+  <script type="text/plain" id="src-structs">type SubmitResult struct {
+	CardId      int64 `json:"card_id"`
+	Status      int   `json:"status"`
+	CharacterId int   `json:"character_id"`
+	VersionNo   int   `json:"version_no"`
+}</script>
+  <script type="text/plain" id="struct-publishPromptOpsCardInnerRequest">type publishPromptOpsCardInnerRequest struct {
+	OperatorID int64 `json:"operator_id"`
+	CardID     int64 `json:"card_id"`
+}</script>
+  <script type="text/plain" id="struct-SubmitResult">type SubmitResult struct {
+	CardId      int64              `json:"card_id"`       // 卡 id
+	Status      int                `json:"status"`        // 新状态（自动过审后为 4000 已发布）
+	CharacterId int                `json:"character_id"`  // 人设账号 id（首次提交在此步生成）
+	VersionNo   int                `json:"version_no"`    // 本次发布快照序号
+	ChapterBeats []ChapterBeatResult `json:"chapter_beats,omitempty"` // 章重抽节拍结果
+}</script>
+  <script type="text/plain" id="struct-SubmitOptions">type SubmitOptions struct {
+	TencentModerationEnabled bool
+}</script>
+  <script type="text/plain" id="struct-cardSubmitExecution">type cardSubmitExecution struct {
+	requestCtx  context.Context
+	input       cardSubmitInput
+	build       *cardBuildState
+	buildResult CardBuildResult
+	publish     *cardPublishState
+	err         error
+}</script>
+  <script type="text/plain" id="struct-cardSubmitInput">type cardSubmitInput struct {
+	UserID   int
+	ClientIP string
+	Request  *reqbind.SubmitProCardReviewRequest
+	Options  SubmitOptions
+}</script>
+  <script type="text/plain" id="struct-SubmitProCardReviewRequest">type SubmitProCardReviewRequest struct {
+	CardId      int64 `json:"card_id"`
+	EditVersion int   `json:"edit_version"`
+	Role        int   `json:"role"`
+	NameCard    *NameCardRequest `json:"name_card,omitempty"`
+}</script>
+  <script type="text/plain" id="struct-UserCustomizationCharacter">type UserCustomizationCharacter struct {
+	ID     int64  `gorm:"column:id" json:"id"`
+	UserID int64  `gorm:"column:user_id" json:"user_id"`
+	Status int    `gorm:"column:status" json:"status"`
+}</script>
+  <script type="text/plain" id="struct-cardBuildState">type cardBuildState struct {
+	UserID      int
+	ClientIP    string
+	Request     *SubmitProCardReviewRequest
+	CardID      int64
+	EditVersion int
+}</script>
+  <script type="text/plain" id="struct-cardPublishState">type cardPublishState struct {
+	UserID                   int
+	Role                     int
+	CardID                   int64
+	EditVersion              int
+	TencentModerationEnabled bool
+	Published                bool
+	Result                   *SubmitResult
+}</script>
+  <script>
+    (() => {
+      const root = document.getElementById('promptops-callgraph');
+      const stage = root.querySelector('#stage');
+      const viewport = root.querySelector('#viewport');
+      const fnPanel = root.querySelector('#fnPanel');
+      const fnTitle = root.querySelector('#fnTitle');
+      const fnFile = root.querySelector('#fnFile');
+      const structPanel = root.querySelector('#structPanel');
+      const structTitle = root.querySelector('#structTitle');
+      const historyBack = root.querySelector('[data-action="history-back"]');
+      const historyForward = root.querySelector('[data-action="history-forward"]');
+
+      const nodes = [
+        { id: 'route', x: 60, y: 240, w: 320, h: 120, kind: 'route', file: 'z_route/router.go', label: 'POST /api/procard/inner/Publish...', sub: '注册内部发布接口，NeedAuth=false', src: 'src-route' },
+        { id: 'controller', x: 460, y: 230, w: 330, h: 142, kind: 'controller', file: 'app/a_controller/api/prompt_ops_inner_api.go', label: 'PublishPromptOpsCardInnerApi', sub: '鉴权并绑定请求，调用 controls 发布', src: 'src-controller' },
+        { id: 'auth', x: 460, y: 30, w: 310, h: 132, kind: 'helper', file: 'app/a_controller/api/procard_inner_api.go', label: 'procardInnerAuthorized', sub: 'HMAC 内部服务间鉴权', src: 'src-auth' },
+        { id: 'controls', x: 900, y: 240, w: 350, h: 132, kind: 'service', file: 'app/x_common/controls/procard/prompt_ops_controls.go', label: 'PublishPromptOpsCardControls', sub: '获取 Redis 分布式锁后委托 model 发布', src: 'src-controls' },
+        { id: 'lock', x: 900, y: 30, w: 340, h: 132, kind: 'helper', file: 'app/x_common/controls/procard/card_controls.go', label: 'acquireProCardMutationLock', sub: 'Redis 分布式锁，阻止并发发布', src: 'src-lock' },
+        { id: 'model', x: 1360, y: 240, w: 340, h: 142, kind: 'model', file: 'app/x_common/model/procard/prompt_ops_adoption_model.go', label: 'PublishPromptOpsCard', sub: '校验参数，查卡获取 userId，提交审核', src: 'src-model' },
+        { id: 'db', x: 1360, y: 30, w: 340, h: 120, kind: 'db', file: 'app/x_common/db/creation', label: 'UserCustomizationCharacter', sub: 'SELECT user_id WHERE id = cardID', src: 'src-db' },
+        { id: 'submit', x: 1800, y: 230, w: 340, h: 132, kind: 'service', file: 'app/x_common/model/procard/submit_model.go', label: 'SubmitProCardReview', sub: '创建执行器并运行完整发布流水线', src: 'src-submit' },
+        { id: 'execution', x: 2280, y: 220, w: 360, h: 152, kind: 'builder', file: 'app/x_common/model/procard/card_submit_execution.go', label: 'cardSubmitExecution.Execute', sub: 'prepare → runBuild → runPublish → finalize', src: 'src-execution' },
+        { id: 'result', x: 2760, y: 240, w: 300, h: 120, kind: 'return', file: 'app/x_common/model/procard/submit_model.go', label: 'SubmitResult', sub: '返回 card_id/status/character_id/version_no', src: 'src-structs' }
+      ];
+      const edges = [
+        ['route', 'controller'], ['controller', 'auth'], ['controller', 'controls'],
+        ['controls', 'lock'], ['controls', 'model'],
+        ['model', 'db'], ['model', 'submit'],
+        ['submit', 'execution'], ['execution', 'result']
+      ];
+      const comments = Object.fromEntries(nodes.map(n => [n.id, n.sub]));
+      const callTargets = {
+        route: [{ text: 'api.PublishPromptOpsCardInnerApi', node: 'controller' }],
+        controller: [
+          { text: 'procardInnerAuthorized', node: 'auth' },
+          { text: 'csProcard.PublishPromptOpsCardControls', node: 'controls' },
+          { text: 'respondProCardErr', node: 'controller' },
+          { text: 'common.Success', node: 'result' }
+        ],
+        auth: [
+          { text: 'zConfig.GetBCommonConfig', node: 'auth' },
+          { text: 'procardInnerCallerCredentials', node: 'auth' },
+          { text: 'networkAveilchat.VerifyHMAC', node: 'auth' }
+        ],
+        controls: [
+          { text: 'acquireProCardMutationLock', node: 'lock' },
+          { text: 'mdProcard.PublishPromptOpsCard', node: 'model' }
+        ],
+        lock: [
+          { text: 'redisProcard.LockCardMutationKey', node: 'lock' },
+          { text: 'redislock', node: 'lock' },
+          { text: 'redis.GetClientAdminServer', node: 'lock' }
+        ],
+        model: [
+          { text: 'mysql.GetDB', node: 'db' },
+          { text: 'SubmitProCardReview', node: 'submit' }
+        ],
+        db: [
+          { text: 'mysql.GetDB', node: 'db' }
+        ],
+        submit: [
+          { text: 'newCardSubmitExecution', node: 'execution' }
+        ],
+        execution: [
+          { text: 'executeCardBuildPlan', node: 'execution' },
+          { text: 'executeCardPublishPlan', node: 'execution' }
+        ],
+        result: []
+      };
+      const functions = Object.fromEntries(nodes.map(n => [n.id, {
+        name: n.label,
+        file: n.file,
+        effect: {
+          route: '在 router.go 中注册内部接口路由，绑定 POST /api/procard/inner/PublishPromptOpsCardInnerApi 到 api.PublishPromptOpsCardInnerApi，NeedAuth=false 表示不走 firebase 鉴权。',
+          controller: '接收 HMAC 鉴权通过的内部请求，绑定 publishPromptOpsCardInnerRequest（operator_id + card_id），调用 controls 层发布后返回 Success。',
+          auth: '从请求头提取 uuid/timestamp/nonce/token，与配置中的内部调用方凭据逐一匹配 HMAC 签名，通过则放行，否则返回鉴权失败。',
+          controls: 'controls 层薄封装：获取卡片级 Redis 分布式锁，委托 model 层 PublishPromptOpsCard 执行发布，defer 释放锁。',
+          lock: '基于 Redis 的分布式锁：按 cardId 生成锁 key，带自动续期，轮询等待直到获取成功或超时。返回 release 闭包在 defer 中调用。',
+          model: '校验 operator_id 和 card_id 参数，查询 user_customization_character 表获取 userId，以腾讯审核关闭模式调用 SubmitProCardReview。',
+          db: '通过 GORM 查询 user_customization_character 表，仅取 user_id 字段，用于 SubmitProCardReview 的 userId 参数。',
+          submit: '构建 cardSubmitInput 并创建 cardSubmitExecution，调用 Execute() 运行完整的 prepare → runBuild → runPublish → finalize 流水线。',
+          execution: '发布流水线核心：prepare 校验 role=6，runBuild 执行构建计划，runPublish 执行 15 步发布计划（锁/校验/快照/过审/同步IM），finalize 释放锁并形成稳定结果。',
+          result: '发布完成后的返回结构体，包含 card_id、status（4000=已发布）、character_id（人设账号）、version_no（快照序号）。'
+        }[n.id] || n.sub,
+        params: n.id === 'controller'
+          ? [['c *gin.Context', 'Gin 请求上下文，提供 header 读取和 JSON 绑定能力。']]
+          : n.id === 'controls'
+            ? [['ctx context.Context', '请求生命周期上下文。'], ['operatorId int64', '操作者 ID。'], ['cardID int64', '要发布的角色卡 ID。']]
+            : n.id === 'model'
+              ? [['ctx context.Context', '数据库查询上下文。'], ['operatorID int64', '操作者 ID。'], ['cardID int64', '要发布的角色卡 ID。']]
+              : [],
+        src: n.src,
+        calls: callTargets[n.id] || []
+      }]));
+      const structs = {
+        'publishPromptOpsCardInnerRequest': {
+          title: 'publishPromptOpsCardInnerRequest',
+          codeId: 'struct-publishPromptOpsCardInnerRequest',
+          fields: [
+            ['OperatorID', '操作者 ID', 'int64', '调用方的运营人员 ID。', '10001'],
+            ['CardID', '卡 ID', 'int64', '要发布的角色卡主键。', '200']
+          ]
+        },
+        'SubmitResult': {
+          title: 'SubmitResult',
+          codeId: 'struct-SubmitResult',
+          fields: [
+            ['CardId', '卡 ID', 'int64', '已发布的角色卡主键。', '200'],
+            ['Status', '状态', 'int', '发布后的新状态码，自动过审后为 4000（已发布）。', '4000'],
+            ['CharacterId', '人设账号 ID', 'int', '首次提交时在此步生成的人设账号 id。', '191001'],
+            ['VersionNo', '版本号', 'int', '本次发布快照的递增序号。', '3'],
+            ['ChapterBeats', '章节节拍', '[]ChapterBeatResult', '创作者章重抽节拍结果，无创作者章时省略。', 'omitempty']
+          ]
+        },
+        'SubmitOptions': {
+          title: 'SubmitOptions',
+          codeId: 'struct-SubmitOptions',
+          fields: [
+            ['TencentModerationEnabled', '腾讯审核开关', 'bool', '是否启用腾讯云内容安全审核，内部接口固定为 false。', 'false']
+          ]
+        },
+        'cardSubmitExecution': {
+          title: 'cardSubmitExecution',
+          codeId: 'struct-cardSubmitExecution',
+          fields: [
+            ['requestCtx', '请求上下文', 'context.Context', '贯穿整个执行生命周期的上下文。', 'ctx'],
+            ['input', '提交输入', 'cardSubmitInput', '包含 UserID、Request、Options 等。', 'cardSubmitInput{...}'],
+            ['build', '构建状态', '*cardBuildState', 'runBuild 阶段的私有状态，有构建数据时才非 nil。', 'nil'],
+            ['publish', '发布状态', '*cardPublishState', 'runPublish 阶段的私有状态，含锁、快照等。', '&cardPublishState{...}'],
+            ['err', '执行错误', 'error', '流水线中途的错误，由 finalize 统一处理。', 'nil']
+          ]
+        },
+        'cardSubmitInput': {
+          title: 'cardSubmitInput',
+          codeId: 'struct-cardSubmitInput',
+          fields: [
+            ['UserID', '用户 ID', 'int', '卡所属用户的 ID。', '10001'],
+            ['ClientIP', '客户端 IP', 'string', '请求来源 IP，用于安全审计。', '10.0.0.1'],
+            ['Request', '提交请求', '*SubmitProCardReviewRequest', '绑定后的提审请求体，含 CardId/EditVersion/Role。', '&SubmitProCardReviewRequest{...}'],
+            ['Options', '服务端选项', 'SubmitOptions', '贯穿整次提交的控制开关。', 'SubmitOptions{...}']
+          ]
+        },
+        'SubmitProCardReviewRequest': {
+          title: 'SubmitProCardReviewRequest',
+          codeId: 'struct-SubmitProCardReviewRequest',
+          fields: [
+            ['CardId', '卡 ID', 'int64', '要提交的角色卡主键。', '200'],
+            ['EditVersion', '编辑版本', 'int', '客户端持有的编辑版本号，用于乐观锁校验。', '3'],
+            ['Role', '角色类型', 'int', '固定为 6（进阶卡），5 会被 prepare 拒绝。', '6']
+          ]
+        },
+        'UserCustomizationCharacter': {
+          title: 'UserCustomizationCharacter',
+          codeId: 'struct-UserCustomizationCharacter',
+          fields: [
+            ['ID', '主键', 'int64', 'user_customization_character 表主键，即 card_id。', '200'],
+            ['UserID', '用户 ID', 'int64', '卡所属用户的 ID。', '10001'],
+            ['Nickname', '角色名', 'string', '角色昵称。', '沈棲'],
+            ['Status', '状态', 'int', '角色状态码，控制发布/编辑权限。', '4000']
+          ]
+        },
+        'cardBuildState': {
+          title: 'cardBuildState',
+          codeId: 'struct-cardBuildState',
+          fields: [
+            ['UserID', '用户 ID', 'int', '卡所属用户 ID。', '10001'],
+            ['ClientIP', '客户端 IP', 'string', '请求来源 IP。', '10.0.0.1'],
+            ['Request', '构建请求', '*SubmitProCardReviewRequest', '克隆后的提审请求。', '&SubmitProCardReviewRequest{...}'],
+            ['CardID', '卡 ID', 'int64', '目标角色卡 ID。', '200'],
+            ['EditVersion', '编辑版本', 'int', '客户端编辑版本号。', '3']
+          ]
+        },
+        'cardPublishState': {
+          title: 'cardPublishState',
+          codeId: 'struct-cardPublishState',
+          fields: [
+            ['UserID', '用户 ID', 'int', '卡所属用户 ID。', '10001'],
+            ['Role', '角色类型', 'int', '固定为 6（进阶卡）。', '6'],
+            ['CardID', '卡 ID', 'int64', '目标角色卡 ID。', '200'],
+            ['EditVersion', '编辑版本', 'int', '客户端编辑版本号。', '3'],
+            ['TencentModerationEnabled', '审核开关', 'bool', '是否启用腾讯云内容审核。', 'false'],
+            ['Published', '已发布', 'bool', '发布是否已提交（不可逆）。', 'true'],
+            ['Result', '发布结果', '*SubmitResult', '发布完成后的稳定结果。', '&SubmitResult{...}']
+          ]
+        }
+      };
+      const structNames = Object.keys(structs);
+      const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+      const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+      const escapeRegExp = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const codeText = id => document.getElementById(id)?.textContent.trim() || '';
+      function linkCode(fnId, code) {
+        const fn = functions[fnId];
+        const links = new Map();
+        (fn?.calls || []).forEach(item => links.set(item.text, { type: 'function', target: item.node }));
+        structNames.forEach(name => links.set(name, { type: 'struct', target: name }));
+        const keys = [...links.keys()].sort((a, b) => b.length - a.length);
+        if (!keys.length) return esc(code);
+        const pattern = new RegExp(keys.map(escapeRegExp).join('|'), 'g');
+        return esc(code).replace(pattern, match => {
+          const link = links.get(match);
+          if (!link) return match;
+          if (link.type === 'function') {
+            return `<span class="function-link" data-node="${link.target}">${match}</span>`;
+          }
+          return `<span class="struct-link" data-struct="${link.target}">${match}</span>`;
+        });
+      }
+      function updateNodeComment(id, value) {
+        comments[id] = value;
+        const node = byId[id];
+        if (node) node.sub = value;
+        const card = root.querySelector(`.node[data-id="${id}"] .node-sub`);
+        if (card) {
+          card.textContent = value;
+          card.setAttribute('title', value);
+        }
+      }
+      const history = [];
+      let historyIndex = -1;
+      function setHistoryButtons() {
+        historyBack.disabled = historyIndex <= 0;
+        historyForward.disabled = historyIndex >= history.length - 1;
+      }
+      function renderFunction(id, skipHistory = false) {
+        const fn = functions[id];
+        if (!fn) return;
+        if (!skipHistory && history[historyIndex] !== id) {
+          history.splice(historyIndex + 1);
+          history.push(id);
+          historyIndex = history.length - 1;
+        }
+        fnTitle.textContent = fn.name;
+        fnFile.textContent = fn.file;
+        fnPanel.innerHTML = `
+          <h3>函数注释</h3>
+          <textarea class="function-comment" data-comment-id="${id}" spellcheck="false">${esc(comments[id] ?? '')}</textarea>
+          <h3>函数作用</h3>
+          <div class="item">${esc(fn.effect)}</div>
+          <h3>接收参数</h3>
+          ${fn.params.length ? fn.params.map(([name, desc]) => `<div class="item"><b>${esc(name)}</b><br>${esc(desc)}</div>`).join('') : '<div class="item">无显式参数。</div>'}
+          <h3>源代码</h3>
+          <pre><code>${linkCode(id, codeText(fn.src))}</code></pre>
+        `;
+        root.querySelectorAll('.node').forEach(n => n.classList.toggle('active', n.dataset.id === id));
+        root.querySelectorAll('.edge, .mid-arrow, .edge-dot').forEach(edge => edge.classList.toggle('active', edge.dataset.from === id || edge.dataset.to === id));
+        edgePaths.forEach(edge => {
+          const active = edge.path.classList.contains('active');
+          edge.fromDot.setAttribute('r', active ? '6.8' : '5.5');
+          edge.toDot.setAttribute('r', active ? '6.8' : '5.5');
+        });
+        setHistoryButtons();
+      }
+      function renderStruct(name) {
+        const st = structs[name];
+        if (!st) return;
+        structTitle.textContent = st.title;
+        structPanel.innerHTML = `
+          <h3>结构体代码</h3>
+          <pre><code>${esc(codeText(st.codeId))}</code></pre>
+          <h3>字段说明</h3>
+          <table><thead><tr><th>字段名</th><th>中文名</th><th>类型</th><th>解释</th><th>举例</th></tr></thead>
+          <tbody>${st.fields.map(row => `<tr>${row.map(cell => `<td>${esc(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+        `;
+      }
+      function defaultPort(node, other) {
+        const ac = { x: node.x + node.w / 2, y: node.y + node.h / 2 };
+        const bc = { x: other.x + other.w / 2, y: other.y + other.h / 2 };
+        const dx = bc.x - ac.x;
+        const dy = bc.y - ac.y;
+        if (Math.abs(dx) >= Math.abs(dy)) return { side: dx >= 0 ? 'right' : 'left', t: .5 };
+        return { side: dy >= 0 ? 'bottom' : 'top', t: .5 };
+      }
+      function portPoint(node, port) {
+        const t = Math.max(0, Math.min(1, port.t));
+        if (port.side === 'left') return { x: node.x, y: node.y + node.h * t };
+        if (port.side === 'right') return { x: node.x + node.w, y: node.y + node.h * t };
+        if (port.side === 'top') return { x: node.x + node.w * t, y: node.y };
+        return { x: node.x + node.w * t, y: node.y + node.h };
+      }
+      function nearestPort(node, x, y) {
+        const distances = [
+          { side: 'left', d: Math.abs(x - node.x), t: (y - node.y) / node.h },
+          { side: 'right', d: Math.abs(x - (node.x + node.w)), t: (y - node.y) / node.h },
+          { side: 'top', d: Math.abs(y - node.y), t: (x - node.x) / node.w },
+          { side: 'bottom', d: Math.abs(y - (node.y + node.h)), t: (x - node.x) / node.w }
+        ];
+        const best = distances.sort((a, b) => a.d - b.d)[0];
+        return { side: best.side, t: Math.max(0, Math.min(1, best.t)) };
+      }
+      function tangentFor(port, p1, p2) {
+        const distance = Math.max(28, Math.min(110, Math.hypot(p2.x - p1.x, p2.y - p1.y) * .18));
+        if (port.side === 'left') return { x: -distance, y: 0 };
+        if (port.side === 'right') return { x: distance, y: 0 };
+        if (port.side === 'top') return { x: 0, y: -distance };
+        return { x: 0, y: distance };
+      }
+      function intersects(x1, y1, x2, y2, n, pad = 24) {
+        const left = n.x - pad, right = n.x + n.w + pad, top = n.y - pad, bottom = n.y + n.h + pad;
+        if (x1 >= left && x1 <= right && y1 >= top && y1 <= bottom) return false;
+        if (x2 >= left && x2 <= right && y2 >= top && y2 <= bottom) return false;
+        return !(Math.max(x1, x2) < left || Math.min(x1, x2) > right || Math.max(y1, y2) < top || Math.min(y1, y2) > bottom);
+      }
+      function edgeGeometry(edge) {
+        const a = byId[edge.from], b = byId[edge.to];
+        const p1 = portPoint(a, edge.fromPort);
+        const p2 = portPoint(b, edge.toPort);
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const distance = Math.max(1, Math.hypot(dx, dy));
+        const direct = { x: dx * .32, y: dy * .32 };
+        const normal = { x: -dy / distance, y: dx / distance };
+        const blocked = nodes.some(n => n.id !== edge.from && n.id !== edge.to && intersects(p1.x, p1.y, p2.x, p2.y, n));
+        const bend = blocked ? Math.max(-34, Math.min(34, dy * .12)) : 0;
+        const t1 = tangentFor(edge.fromPort, p1, p2);
+        const t2 = tangentFor(edge.toPort, p2, p1);
+        const c1 = {
+          x: p1.x + direct.x * .72 + t1.x * .28 + normal.x * bend,
+          y: p1.y + direct.y * .72 + t1.y * .28 + normal.y * bend
+        };
+        const c2 = {
+          x: p2.x - direct.x * .72 + t2.x * .28 + normal.x * bend,
+          y: p2.y - direct.y * .72 + t2.y * .28 + normal.y * bend
+        };
+        const d = `M${p1.x},${p1.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${p2.x},${p2.y}`;
+        const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+        return { d, p1, p2, mid, angle };
+      }
+      const gEdges = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const gNodes = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const gPorts = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      stage.append(gEdges, gNodes, gPorts);
+      const edgePaths = [];
+      edges.forEach(([from, to]) => {
+        const a = byId[from], b = byId[to];
+        const edge = { from, to, fromPort: defaultPort(a, b), toPort: defaultPort(b, a) };
+        const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const midArrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const fromDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        const toDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        hitPath.dataset.from = from;
+        hitPath.dataset.to = to;
+        hitPath.setAttribute('class', 'edge-hit');
+        path.dataset.from = from;
+        path.dataset.to = to;
+        path.setAttribute('class', 'edge');
+        midArrow.dataset.from = from;
+        midArrow.dataset.to = to;
+        midArrow.setAttribute('class', 'mid-arrow');
+        midArrow.setAttribute('d', 'M-7,-5 L6,0 L-7,5 Z');
+        fromDot.dataset.from = from;
+        fromDot.dataset.to = to;
+        toDot.dataset.from = from;
+        toDot.dataset.to = to;
+        fromDot.setAttribute('class', 'edge-dot');
+        toDot.setAttribute('class', 'edge-dot');
+        fromDot.setAttribute('r', '5.5');
+        toDot.setAttribute('r', '5.5');
+        gEdges.appendChild(hitPath);
+        gEdges.appendChild(path);
+        gEdges.appendChild(midArrow);
+        gPorts.appendChild(fromDot);
+        gPorts.appendChild(toDot);
+        const edgeRecord = { ...edge, hitPath, path, midArrow, fromDot, toDot };
+        edgePaths.push(edgeRecord);
+        [hitPath, path, midArrow, fromDot, toDot].forEach(el => {
+          el.addEventListener('click', e => {
+            e.stopPropagation();
+            selectEdge(edgeRecord);
+          });
+        });
+        attachPortDrag(edgeRecord, fromDot, 'from');
+        attachPortDrag(edgeRecord, toDot, 'to');
+      });
+      function distributeInitialPorts() {
+        const groups = new Map();
+        edgePaths.forEach(edge => {
+          [
+            { endpoint: 'from', nodeId: edge.from, port: edge.fromPort },
+            { endpoint: 'to', nodeId: edge.to, port: edge.toPort }
+          ].forEach(item => {
+            const key = `${item.nodeId}:${item.port.side}`;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push({ edge, endpoint: item.endpoint, port: item.port });
+          });
+        });
+        groups.forEach(items => {
+          if (items.length <= 1) return;
+          items
+            .sort((a, b) => {
+              const ao = byId[a.endpoint === 'from' ? a.edge.to : a.edge.from];
+              const bo = byId[b.endpoint === 'from' ? b.edge.to : b.edge.from];
+              return a.port.side === 'left' || a.port.side === 'right' ? ao.y - bo.y : ao.x - bo.x;
+            })
+            .forEach((item, index) => {
+              item.port.t = (index + 1) / (items.length + 1);
+            });
+        });
+      }
+      distributeInitialPorts();
+      function selectEdge(selected) {
+        edgePaths.forEach(edge => {
+          const active = edge === selected;
+          edge.path.classList.toggle('active', active);
+          edge.midArrow.classList.toggle('active', active);
+          edge.fromDot.classList.toggle('active', active);
+          edge.toDot.classList.toggle('active', active);
+          edge.fromDot.setAttribute('r', active ? '6.8' : '5.5');
+          edge.toDot.setAttribute('r', active ? '6.8' : '5.5');
+        });
+        gEdges.appendChild(selected.hitPath);
+        gEdges.appendChild(selected.path);
+        gEdges.appendChild(selected.midArrow);
+        gPorts.appendChild(selected.fromDot);
+        gPorts.appendChild(selected.toDot);
+      }
+      function graphPoint(e) {
+        const rect = viewport.getBoundingClientRect();
+        return { x: (e.clientX - rect.left - tx) / scale, y: (e.clientY - rect.top - ty) / scale };
+      }
+      function attachPortDrag(edge, dot, endpoint) {
+        dot.addEventListener('pointerdown', e => {
+          e.stopPropagation();
+          selectEdge(edge);
+          dot.classList.add('dragging');
+          dot.setPointerCapture(e.pointerId);
+          const move = ev => {
+            const p = graphPoint(ev);
+            const node = byId[endpoint === 'from' ? edge.from : edge.to];
+            edge[endpoint === 'from' ? 'fromPort' : 'toPort'] = nearestPort(node, p.x, p.y);
+            updateEdges();
+          };
+          const up = ev => {
+            dot.classList.remove('dragging');
+            try { dot.releasePointerCapture(ev.pointerId); } catch {}
+            dot.removeEventListener('pointermove', move);
+            dot.removeEventListener('pointerup', up);
+          };
+          dot.addEventListener('pointermove', move);
+          dot.addEventListener('pointerup', up);
+        });
+      }
+      function updateEdges() {
+        edgePaths.forEach(edge => {
+          const geo = edgeGeometry(edge);
+          edge.hitPath.setAttribute('d', geo.d);
+          edge.path.setAttribute('d', geo.d);
+          edge.fromDot.setAttribute('cx', geo.p1.x);
+          edge.fromDot.setAttribute('cy', geo.p1.y);
+          edge.toDot.setAttribute('cx', geo.p2.x);
+          edge.toDot.setAttribute('cy', geo.p2.y);
+          const length = edge.path.getTotalLength();
+          const mid = edge.path.getPointAtLength(length / 2);
+          const before = edge.path.getPointAtLength(Math.max(0, length / 2 - 2));
+          const after = edge.path.getPointAtLength(Math.min(length, length / 2 + 2));
+          const angle = Math.atan2(after.y - before.y, after.x - before.x) * 180 / Math.PI;
+          edge.midArrow.setAttribute('transform', `translate(${mid.x},${mid.y}) rotate(${angle})`);
+        });
+      }
+      nodes.forEach(n => {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('class', 'node');
+        group.dataset.id = n.id;
+        group.setAttribute('transform', `translate(${n.x},${n.y})`);
+        group.innerHTML = `
+          <rect class="select-ring" x="-7" y="-7" width="${n.w + 14}" height="${n.h + 14}" rx="12"></rect>
+          <rect class="node-frame" width="${n.w}" height="${n.h}" rx="8"></rect>
+          <foreignObject x="0" y="0" width="${n.w}" height="${n.h}">
+            <div class="node-card" xmlns="http://www.w3.org/1999/xhtml">
+              <div class="kind">${esc(n.kind)}</div>
+              <div class="label" title="${esc(n.label)}">${esc(n.label)}</div>
+              <div class="file" title="${esc(n.file)}">${esc(n.file)}</div>
+              <div class="node-sub" title="${esc(n.sub)}">${esc(n.sub)}</div>
+            </div>
+          </foreignObject>
+        `;
+        let nodeDrag = null;
+        group.addEventListener('pointerdown', e => {
+          e.stopPropagation();
+          nodeDrag = { pointerId: e.pointerId, sx: e.clientX, sy: e.clientY, x: n.x, y: n.y, moved: false };
+          group.classList.add('dragging');
+          group.setPointerCapture(e.pointerId);
+        });
+        group.addEventListener('pointermove', e => {
+          if (!nodeDrag) return;
+          const dx = (e.clientX - nodeDrag.sx) / scale;
+          const dy = (e.clientY - nodeDrag.sy) / scale;
+          if (Math.abs(dx) > 1 || Math.abs(dy) > 1) nodeDrag.moved = true;
+          n.x = nodeDrag.x + dx;
+          n.y = nodeDrag.y + dy;
+          group.setAttribute('transform', `translate(${n.x},${n.y})`);
+          updateEdges();
+        });
+        group.addEventListener('pointerup', e => {
+          if (!nodeDrag) return;
+          const select = !nodeDrag.moved;
+          group.classList.remove('dragging');
+          try { group.releasePointerCapture(e.pointerId); } catch {}
+          nodeDrag = null;
+          if (select) renderFunction(n.id);
+        });
+        gNodes.appendChild(group);
+      });
+      updateEdges();
+      let tx = 30, ty = 160, scale = .34;
+      function applyTransform() { stage.setAttribute('transform', `translate(${tx},${ty}) scale(${scale})`); }
+      function fit() { tx = 30; ty = 160; scale = .34; applyTransform(); }
+      applyTransform();
+      let pan = null;
+      viewport.addEventListener('pointerdown', e => {
+        if (e.target.closest && e.target.closest('.node')) return;
+        pan = { x: e.clientX, y: e.clientY, tx, ty };
+        viewport.classList.add('dragging');
+        viewport.setPointerCapture(e.pointerId);
+      });
+      viewport.addEventListener('pointermove', e => {
+        if (!pan) return;
+        tx = pan.tx + e.clientX - pan.x;
+        ty = pan.ty + e.clientY - pan.y;
+        applyTransform();
+      });
+      viewport.addEventListener('pointerup', e => {
+        pan = null;
+        viewport.classList.remove('dragging');
+        try { viewport.releasePointerCapture(e.pointerId); } catch {}
+      });
+      viewport.addEventListener('wheel', e => {
+        e.preventDefault();
+        const old = scale;
+        scale = Math.max(.18, Math.min(1.25, scale * (e.deltaY > 0 ? .9 : 1.1)));
+        const rect = viewport.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        tx = mx - (mx - tx) * (scale / old);
+        ty = my - (my - ty) * (scale / old);
+        applyTransform();
+      }, { passive: false });
+      root.querySelector('[data-action="fit"]').addEventListener('click', fit);
+      root.querySelector('[data-action="zoom-in"]').addEventListener('click', () => { scale = Math.min(1.25, scale * 1.16); applyTransform(); });
+      root.querySelector('[data-action="zoom-out"]').addEventListener('click', () => { scale = Math.max(.18, scale / 1.16); applyTransform(); });
+      historyBack.addEventListener('click', () => { if (historyIndex > 0) renderFunction(history[--historyIndex], true); });
+      historyForward.addEventListener('click', () => { if (historyIndex < history.length - 1) renderFunction(history[++historyIndex], true); });
+      root.addEventListener('click', e => {
+        const functionEl = e.target.closest('.function-link');
+        if (functionEl && functionEl.dataset.node) {
+          renderFunction(functionEl.dataset.node);
+          return;
+        }
+        const structEl = e.target.closest('.struct-link');
+        if (structEl && structEl.dataset.struct) renderStruct(structEl.dataset.struct);
+      });
+      root.addEventListener('input', e => {
+        const commentEl = e.target.closest('.function-comment');
+        if (!commentEl || !commentEl.dataset.commentId) return;
+        updateNodeComment(commentEl.dataset.commentId, commentEl.value);
+      });
+      root.querySelectorAll('.resizer').forEach(handle => {
+        handle.addEventListener('pointerdown', e => {
+          const side = handle.dataset.side;
+          const startX = e.clientX;
+          const styles = getComputedStyle(root);
+          const startLeft = parseInt(styles.getPropertyValue('--left-width')) || 360;
+          const startRight = parseInt(styles.getPropertyValue('--right-width')) || 520;
+          const rootWidth = root.getBoundingClientRect().width;
+          const minPanel = 40;
+          const minCanvas = 180;
+          const maxCombined = Math.max(minPanel * 2, rootWidth - 16 - minCanvas);
+          handle.setPointerCapture(e.pointerId);
+          const move = ev => {
+            const delta = ev.clientX - startX;
+            let left = side === 'left' ? startLeft + delta : startLeft;
+            let right = side === 'right' ? startRight - delta : startRight;
+            left = Math.max(minPanel, left);
+            right = Math.max(minPanel, right);
+            const combined = left + right;
+            if (combined > maxCombined) {
+              const overflow = combined - maxCombined;
+              if (side === 'left') right = Math.max(minPanel, right - overflow);
+              else left = Math.max(minPanel, left - overflow);
+            }
+            root.style.setProperty('--left-width', `${left}px`);
+            root.style.setProperty('--right-width', `${right}px`);
+          };
+          const up = ev => {
+            try { handle.releasePointerCapture(ev.pointerId); } catch {}
+            handle.removeEventListener('pointermove', move);
+            handle.removeEventListener('pointerup', up);
+          };
+          handle.addEventListener('pointermove', move);
+          handle.addEventListener('pointerup', up);
+        });
+      });
+      renderFunction('controller');
+    })();
+  </script>
+</div>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smind</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="app">
+    <main class="workbench">
+      <header class="toolbar">
+        <div class="file-actions">
+          <button id="openFile" type="button">打开</button>
+          <button id="saveAsFile" type="button">另存为</button>
+          <button id="exportMarkdown" type="button">导出MD</button>
+          <span id="saveStatus">自动保存</span>
+          <input id="fileInput" type="file" accept=".mindmap.json,.json,application/json" hidden>
+        </div>
+
+        <div class="swatches" aria-label="颜色选择">
+          <button data-color="red" title="红" type="button"></button>
+          <button data-color="orange" title="橙" type="button"></button>
+          <button data-color="yellow" title="黄" type="button"></button>
+          <button data-color="green" title="绿" type="button"></button>
+          <button data-color="cyan" title="青" type="button"></button>
+          <button data-color="blue" title="蓝" type="button"></button>
+          <button data-color="purple" title="紫" type="button"></button>
+          <button data-color="white" title="白" type="button"></button>
+          <button data-color="black" title="黑" type="button"></button>
+        </div>
+
+        <div class="font-control">
+          <input id="fontSize" aria-label="字号" type="range" min="12" max="30" value="16">
+          <span id="fontValue">16</span>
+        </div>
+      </header>
+
+      <section id="canvasShell" class="canvas-shell" aria-label="思维导图画布">
+        <svg id="edgeSvg" class="edge-svg">
+          <g id="edgeLayer"></g>
+        </svg>
+        <div id="nodeLayer" class="node-layer"></div>
+        <div id="selectionBox" class="selection-box"></div>
+      </section>
+    </main>
+
+    <aside id="inspector" class="inspector">
+      <div id="inspectorResizer" class="inspector-resizer"></div>
+      <div class="detail-editor">
+        <div class="detail-toolbar" aria-label="节点内容工具">
+          <div class="detail-tool-group" aria-label="高亮颜色">
+            <span>高亮</span>
+            <button data-detail-highlight="red" title="高亮红" type="button"></button>
+            <button data-detail-highlight="orange" title="高亮橙" type="button"></button>
+            <button data-detail-highlight="yellow" title="高亮黄" type="button"></button>
+            <button data-detail-highlight="green" title="高亮绿" type="button"></button>
+            <button data-detail-highlight="cyan" title="高亮青" type="button"></button>
+            <button data-detail-highlight="blue" title="高亮蓝" type="button"></button>
+            <button data-detail-highlight="purple" title="高亮紫" type="button"></button>
+            <button data-detail-highlight="white" title="高亮白" type="button"></button>
+            <button data-detail-highlight="black" title="高亮黑" type="button"></button>
+          </div>
+          <div class="detail-tool-group" aria-label="字体颜色">
+            <span>字色</span>
+            <button data-detail-color="red" title="字色红" type="button"></button>
+            <button data-detail-color="orange" title="字色橙" type="button"></button>
+            <button data-detail-color="yellow" title="字色黄" type="button"></button>
+            <button data-detail-color="green" title="字色绿" type="button"></button>
+            <button data-detail-color="cyan" title="字色青" type="button"></button>
+            <button data-detail-color="blue" title="字色蓝" type="button"></button>
+            <button data-detail-color="purple" title="字色紫" type="button"></button>
+            <button data-detail-color="white" title="字色白" type="button"></button>
+            <button data-detail-color="black" title="字色黑" type="button"></button>
+          </div>
+          <label class="line-gap-control">
+            <span>行距</span>
+            <select id="detailLineGap" aria-label="节点内容行距">
+              <option value="0.1">0.1</option>
+              <option value="0.2">0.2</option>
+              <option value="0.3">0.3</option>
+              <option value="0.4">0.4</option>
+              <option value="0.5" selected>0.5</option>
+              <option value="0.6">0.6</option>
+              <option value="0.7">0.7</option>
+              <option value="0.8">0.8</option>
+              <option value="0.9">0.9</option>
+            </select>
+          </label>
+          <label class="detail-font-control">
+            <span>字号</span>
+            <input id="detailFontSize" aria-label="节点内容字号" type="range" min="12" max="32" value="15">
+            <span id="detailFontValue">15</span>
+          </label>
+          <button id="detailFormatBrush" class="format-brush-button" type="button" aria-pressed="false">格式刷</button>
+          <button id="detailLineNumbers" class="detail-action-button" type="button">序号</button>
+        </div>
+        <div id="nodeDetail" class="detail-input" contenteditable="true" spellcheck="false"></div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="./logic.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

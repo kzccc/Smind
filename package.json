@@ -1,0 +1,13 @@
+{
+  "name": "smind",
+  "private": true,
+  "scripts": {
+    "test:keyboard": "node tests/keyboard.playwright.js",
+    "test:performance": "node tests/performance.playwright.js",
+    "test:richtext": "node tests/richtext.playwright.js",
+    "test:storage": "node tests/storage.playwright.js"
+  },
+  "dependencies": {
+    "playwright": "^1.62.1"
+  }
+}
