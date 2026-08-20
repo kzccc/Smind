@@ -258,6 +258,10 @@ button:hover {
   color: #fff;
 }
 
+body.inspector-expanded .canvas-switcher {
+  display: none;
+}
+
 .edge-svg,
 .node-layer {
   position: absolute;

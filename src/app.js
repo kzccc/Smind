@@ -526,6 +526,7 @@ function syncInspectorToggle() {
   const label = state.inspectorExpanded ? "恢复侧边栏宽度" : "展开侧边栏";
   els.inspectorToggle.setAttribute("aria-label", label);
   els.inspectorToggle.title = label;
+  document.body.classList.toggle("inspector-expanded", state.inspectorExpanded);
 }
 
 function toggleInspectorExpanded() {
