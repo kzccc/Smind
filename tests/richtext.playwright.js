@@ -200,7 +200,7 @@ async function run() {
 
     await waitSaved(page);
     const recovery = await getStoredValue(page, "recovery-project");
-    const savedNode = recovery.project.nodes[0];
+    const savedNode = recovery.project.canvases.main.nodes[0];
     assert.equal(savedNode.detail, "字号滑轮");
     assert.equal(savedNode.detailLineGap, 0.3);
     assert.equal(savedNode.detailHtml.includes("<span"), true);
@@ -277,8 +277,8 @@ async function run() {
     assert.equal(pastedImage.imageSrc.startsWith("data:image/png;base64,"), true);
     await waitSaved(page);
     const imageRecovery = await getStoredValue(page, "recovery-project");
-    assert.equal(imageRecovery.project.nodes[0].detail, "图片前文字图片后");
-    assert.equal(imageRecovery.project.nodes[0].detailHtml.includes("<img"), true);
+    assert.equal(imageRecovery.project.canvases.main.nodes[0].detail, "图片前文字图片后");
+    assert.equal(imageRecovery.project.canvases.main.nodes[0].detailHtml.includes("<img"), true);
     await page.locator('[data-id="node-2"]').click();
     await page.locator('[data-id="node-1"]').click();
     assert.equal(await page.locator("#nodeDetail img").count(), 1);
@@ -309,8 +309,8 @@ async function run() {
     assert.equal(Number(resizedImage.heightAttribute) > 0, true);
     await waitSaved(page);
     const resizedRecovery = await getStoredValue(page, "recovery-project");
-    assert.equal(resizedRecovery.project.nodes[0].detailHtml.includes(`width="${resizedImage.widthAttribute}"`), true);
-    assert.equal(resizedRecovery.project.nodes[0].detailHtml.includes(`height="${resizedImage.heightAttribute}"`), true);
+    assert.equal(resizedRecovery.project.canvases.main.nodes[0].detailHtml.includes(`width="${resizedImage.widthAttribute}"`), true);
+    assert.equal(resizedRecovery.project.canvases.main.nodes[0].detailHtml.includes(`height="${resizedImage.heightAttribute}"`), true);
     await page.locator('[data-id="node-2"]').click();
     await page.locator('[data-id="node-1"]').click();
     const restoredImageSize = await page.locator("#nodeDetail img").evaluate((image) => ({

@@ -7,7 +7,8 @@ const { chromium } = require("playwright");
 const rootDir = path.resolve(__dirname, "..");
 const pageUrl = `file:///${path.join(rootDir, "src", "index.html").replace(/\\/g, "/")}`;
 const mysqlProject = path.join(rootDir, "data", "mysql.mindmap.json");
-const mysqlProjectNodeCount = JSON.parse(fs.readFileSync(mysqlProject, "utf8")).nodes.length;
+const mysqlProjectData = JSON.parse(fs.readFileSync(mysqlProject, "utf8"));
+const mysqlProjectNodeCount = (mysqlProjectData.canvases?.main?.nodes || mysqlProjectData.nodes).length;
 
 function findEdge() {
   const candidates = [

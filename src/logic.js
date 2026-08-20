@@ -5,7 +5,13 @@
     root.MindMapLogic = factory();
   }
 })(typeof globalThis !== "undefined" ? globalThis : window, function () {
-  const PROJECT_SCHEMA = "mindmap.product.v1";
+  const PROJECT_SCHEMA = "mindmap.product.v2";
+  const CANVAS_MAIN_ID = "main";
+  const CANVAS_SUMMARY_ID = "summary";
+  const CANVAS_TITLES = {
+    [CANVAS_MAIN_ID]: "主画布",
+    [CANVAS_SUMMARY_ID]: "副画布",
+  };
 
   function deepClone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -64,9 +70,76 @@
     return Math.max(maxNumericId, nodes.length) + 1;
   }
 
+  function normalizeViewport(viewport = {}) {
+    return {
+      scale: viewport.scale ?? 1,
+      tx: viewport.tx ?? 420,
+      ty: viewport.ty ?? 300,
+      inspectorWidth: viewport.inspectorWidth ?? 390,
+    };
+  }
+
+  function defaultCanvasNode(canvasId, title) {
+    return {
+      id: "node-1",
+      parentId: null,
+      x: 0,
+      y: 0,
+      w: 190,
+      h: 92,
+      text: title || CANVAS_TITLES[canvasId] || "画布",
+      detail: "",
+      detailHtml: "",
+      detailLineGap: 0.5,
+      color: "default",
+      fontSize: 18,
+      children: [],
+    };
+  }
+
+  function createCanvasDocument(input = {}, fallback = {}) {
+    const id = String(input.id || fallback.id || CANVAS_MAIN_ID);
+    const title = String(input.title || fallback.title || CANVAS_TITLES[id] || "画布");
+    const inputNodes = Array.isArray(input.nodes) ? input.nodes : [];
+    const nodes = (inputNodes.length > 0 ? deepClone(inputNodes) : [defaultCanvasNode(id, title)])
+      .map(normalizeNode);
+    const nodeIds = new Set(nodes.map((node) => node.id));
+    nodes.forEach((node) => {
+      if (node.parentId && !nodeIds.has(node.parentId)) node.parentId = null;
+      node.children = node.children.filter((childId) => nodeIds.has(childId));
+    });
+    const selectedIds = [...new Set(input.selection?.selectedIds || [])].filter((nodeId) => nodeIds.has(nodeId));
+    const activeId = nodeIds.has(input.selection?.activeId) ? input.selection.activeId : selectedIds[0] || nodes[0].id;
+
+    return {
+      id,
+      title,
+      viewport: normalizeViewport(input.viewport || fallback.viewport || {}),
+      nodes,
+      selection: {
+        activeId,
+        selectedIds: selectedIds.length > 0 ? selectedIds : [activeId],
+      },
+      counters: {
+        nextId: Math.max(input.counters?.nextId || 1, nextIdFromNodes(nodes)),
+      },
+    };
+  }
+
   function createProjectDocument(input = {}) {
     const now = input.now || new Date().toISOString();
     const meta = input.meta || {};
+    const canvasInputs = input.canvases || {
+      [CANVAS_MAIN_ID]: {
+        id: CANVAS_MAIN_ID,
+        title: CANVAS_TITLES[CANVAS_MAIN_ID],
+        viewport: input.viewport,
+        nodes: input.nodes,
+        selection: input.selection,
+        counters: input.counters,
+      },
+    };
+
     return {
       schema: PROJECT_SCHEMA,
       meta: {
@@ -74,47 +147,42 @@
         createdAt: meta.createdAt || now,
         updatedAt: now,
       },
-      viewport: {
-        scale: input.viewport?.scale ?? 1,
-        tx: input.viewport?.tx ?? 420,
-        ty: input.viewport?.ty ?? 300,
-        inspectorWidth: input.viewport?.inspectorWidth ?? 390,
-      },
-      nodes: deepClone(input.nodes || []).map(normalizeNode),
-      selection: {
-        activeId: input.selection?.activeId || "",
-        selectedIds: [...new Set(input.selection?.selectedIds || [])],
-      },
-      counters: {
-        nextId: input.counters?.nextId ?? nextIdFromNodes(input.nodes || []),
+      activeCanvasId: input.activeCanvasId === CANVAS_SUMMARY_ID ? CANVAS_SUMMARY_ID : CANVAS_MAIN_ID,
+      canvases: {
+        [CANVAS_MAIN_ID]: createCanvasDocument(canvasInputs[CANVAS_MAIN_ID], {
+          id: CANVAS_MAIN_ID,
+          title: CANVAS_TITLES[CANVAS_MAIN_ID],
+        }),
+        [CANVAS_SUMMARY_ID]: createCanvasDocument(canvasInputs[CANVAS_SUMMARY_ID], {
+          id: CANVAS_SUMMARY_ID,
+          title: CANVAS_TITLES[CANVAS_SUMMARY_ID],
+        }),
       },
     };
   }
 
   function normalizeProjectDocument(raw = {}) {
-    const nodes = (Array.isArray(raw) ? raw : raw.nodes || []).map(normalizeNode);
-    if (nodes.length === 0) {
+    if (Array.isArray(raw)) {
+      if (raw.length === 0) throw new Error("项目文件中没有可用节点");
+      return createProjectDocument({ nodes: raw });
+    }
+    if (raw.canvases) {
+      return createProjectDocument({
+        meta: raw.meta || {},
+        activeCanvasId: raw.activeCanvasId,
+        canvases: raw.canvases,
+        now: raw.meta?.updatedAt,
+      });
+    }
+    if (!Array.isArray(raw.nodes) || raw.nodes.length === 0) {
       throw new Error("项目文件中没有可用节点");
     }
-    const nodeIds = new Set(nodes.map((node) => node.id));
-    nodes.forEach((node) => {
-      if (node.parentId && !nodeIds.has(node.parentId)) node.parentId = null;
-      node.children = node.children.filter((childId) => nodeIds.has(childId));
-    });
-    const selectedIds = (raw.selection?.selectedIds || []).filter((id) => nodeIds.has(id));
-    const activeId = nodeIds.has(raw.selection?.activeId) ? raw.selection.activeId : selectedIds[0] || nodes[0].id;
-
     return createProjectDocument({
       meta: raw.meta || {},
       viewport: raw.viewport || {},
-      nodes,
-      selection: {
-        activeId,
-        selectedIds: selectedIds.length > 0 ? selectedIds : [activeId],
-      },
-      counters: {
-        nextId: Math.max(raw.counters?.nextId || 1, nextIdFromNodes(nodes)),
-      },
+      nodes: raw.nodes,
+      selection: raw.selection || {},
+      counters: raw.counters || {},
       now: raw.meta?.updatedAt,
     });
   }
@@ -481,6 +549,7 @@
     connectNodes,
     connectManyNodes,
     createProjectDocument,
+    createCanvasDocument,
     normalizeProjectDocument,
     projectToMarkdown,
   };

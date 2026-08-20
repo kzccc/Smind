@@ -1,350 +1,393 @@
 {
-  "schema": "mindmap.product.v1",
+  "schema": "mindmap.product.v2",
   "meta": {
     "title": "git",
     "createdAt": "2026-08-16T06:19:09.597Z",
     "updatedAt": "2026-08-16T06:19:09.597Z"
   },
-  "viewport": {
-    "scale": 1,
-    "tx": 420,
-    "ty": 300,
-    "inspectorWidth": 390
-  },
-  "nodes": [
-    {
-      "id": "node-1",
-      "parentId": null,
-      "x": 0,
-      "y": 677,
-      "w": 136,
-      "h": 54,
-      "text": "git",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 18,
-      "children": [
-        "node-2",
-        "node-18",
-        "node-19",
-        "node-20"
-      ]
+  "activeCanvasId": "main",
+  "canvases": {
+    "main": {
+      "id": "main",
+      "title": "主画布",
+      "viewport": {
+        "scale": 1,
+        "tx": 420,
+        "ty": 300,
+        "inspectorWidth": 390
+      },
+      "nodes": [
+        {
+          "id": "node-1",
+          "parentId": null,
+          "x": 0,
+          "y": 677,
+          "w": 136,
+          "h": 54,
+          "text": "git",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 18,
+          "children": [
+            "node-2",
+            "node-18",
+            "node-19",
+            "node-20"
+          ]
+        },
+        {
+          "id": "node-2",
+          "parentId": "node-1",
+          "x": 280,
+          "y": 287,
+          "w": 136,
+          "h": 54,
+          "text": "初始化",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 16,
+          "children": [
+            "node-3",
+            "node-4",
+            "node-9"
+          ]
+        },
+        {
+          "id": "node-3",
+          "parentId": "node-2",
+          "x": 560,
+          "y": 0,
+          "w": 136,
+          "h": 54,
+          "text": "init",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-4",
+          "parentId": "node-2",
+          "x": 560,
+          "y": 164,
+          "w": 138,
+          "h": 54,
+          "text": "config",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": [
+            "node-5"
+          ]
+        },
+        {
+          "id": "node-5",
+          "parentId": "node-4",
+          "x": 840,
+          "y": 95,
+          "w": 260,
+          "h": 192,
+          "text": "git config --global user.name \"你的名字\"\ngit config --global user.email \"你的邮箱\"",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": [
+            "node-6",
+            "node-7",
+            "node-8"
+          ]
+        },
+        {
+          "id": "node-6",
+          "parentId": "node-5",
+          "x": 1120,
+          "y": 82,
+          "w": 136,
+          "h": 54,
+          "text": "local",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-7",
+          "parentId": "node-5",
+          "x": 1120,
+          "y": 164,
+          "w": 138,
+          "h": 54,
+          "text": "global",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-8",
+          "parentId": "node-5",
+          "x": 1120,
+          "y": 246,
+          "w": 138,
+          "h": 54,
+          "text": "system",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-9",
+          "parentId": "node-2",
+          "x": 560,
+          "y": 574,
+          "w": 136,
+          "h": 54,
+          "text": ".git",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": [
+            "node-10",
+            "node-11",
+            "node-15",
+            "node-16",
+            "node-17"
+          ]
+        },
+        {
+          "id": "node-10",
+          "parentId": "node-9",
+          "x": 840,
+          "y": 328,
+          "w": 138,
+          "h": 54,
+          "text": "config",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-11",
+          "parentId": "node-9",
+          "x": 840,
+          "y": 492,
+          "w": 152,
+          "h": 54,
+          "text": "objects",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": [
+            "node-12",
+            "node-13",
+            "node-14"
+          ]
+        },
+        {
+          "id": "node-12",
+          "parentId": "node-11",
+          "x": 1120,
+          "y": 410,
+          "w": 136,
+          "h": 54,
+          "text": "Blob",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-13",
+          "parentId": "node-11",
+          "x": 1120,
+          "y": 492,
+          "w": 136,
+          "h": 54,
+          "text": "Tree",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-14",
+          "parentId": "node-11",
+          "x": 1120,
+          "y": 574,
+          "w": 138,
+          "h": 54,
+          "text": "Commit",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-15",
+          "parentId": "node-9",
+          "x": 840,
+          "y": 656,
+          "w": 136,
+          "h": 54,
+          "text": "refs",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-16",
+          "parentId": "node-9",
+          "x": 840,
+          "y": 738,
+          "w": 136,
+          "h": 54,
+          "text": "HEAD",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-17",
+          "parentId": "node-9",
+          "x": 840,
+          "y": 820,
+          "w": 136,
+          "h": 54,
+          "text": "index",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-18",
+          "parentId": "node-1",
+          "x": 280,
+          "y": 902,
+          "w": 138,
+          "h": 54,
+          "text": "分支主题 2",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 16,
+          "children": []
+        },
+        {
+          "id": "node-19",
+          "parentId": "node-1",
+          "x": 280,
+          "y": 984,
+          "w": 138,
+          "h": 54,
+          "text": "分支主题 3",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 16,
+          "children": []
+        },
+        {
+          "id": "node-20",
+          "parentId": "node-1",
+          "x": 280,
+          "y": 1066,
+          "w": 138,
+          "h": 54,
+          "text": "分支主题 4",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 16,
+          "children": []
+        }
+      ],
+      "selection": {
+        "activeId": "node-1",
+        "selectedIds": [
+          "node-1"
+        ]
+      },
+      "counters": {
+        "nextId": 21
+      }
     },
-    {
-      "id": "node-2",
-      "parentId": "node-1",
-      "x": 280,
-      "y": 287,
-      "w": 136,
-      "h": 54,
-      "text": "初始化",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 16,
-      "children": [
-        "node-3",
-        "node-4",
-        "node-9"
-      ]
-    },
-    {
-      "id": "node-3",
-      "parentId": "node-2",
-      "x": 560,
-      "y": 0,
-      "w": 136,
-      "h": 54,
-      "text": "init",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": []
-    },
-    {
-      "id": "node-4",
-      "parentId": "node-2",
-      "x": 560,
-      "y": 164,
-      "w": 138,
-      "h": 54,
-      "text": "config",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": [
-        "node-5"
-      ]
-    },
-    {
-      "id": "node-5",
-      "parentId": "node-4",
-      "x": 840,
-      "y": 95,
-      "w": 260,
-      "h": 192,
-      "text": "git config --global user.name \"你的名字\"\ngit config --global user.email \"你的邮箱\"",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": [
-        "node-6",
-        "node-7",
-        "node-8"
-      ]
-    },
-    {
-      "id": "node-6",
-      "parentId": "node-5",
-      "x": 1120,
-      "y": 82,
-      "w": 136,
-      "h": 54,
-      "text": "local",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": []
-    },
-    {
-      "id": "node-7",
-      "parentId": "node-5",
-      "x": 1120,
-      "y": 164,
-      "w": 138,
-      "h": 54,
-      "text": "global",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": []
-    },
-    {
-      "id": "node-8",
-      "parentId": "node-5",
-      "x": 1120,
-      "y": 246,
-      "w": 138,
-      "h": 54,
-      "text": "system",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": []
-    },
-    {
-      "id": "node-9",
-      "parentId": "node-2",
-      "x": 560,
-      "y": 574,
-      "w": 136,
-      "h": 54,
-      "text": ".git",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": [
-        "node-10",
-        "node-11",
-        "node-15",
-        "node-16",
-        "node-17"
-      ]
-    },
-    {
-      "id": "node-10",
-      "parentId": "node-9",
-      "x": 840,
-      "y": 328,
-      "w": 138,
-      "h": 54,
-      "text": "config",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": []
-    },
-    {
-      "id": "node-11",
-      "parentId": "node-9",
-      "x": 840,
-      "y": 492,
-      "w": 152,
-      "h": 54,
-      "text": "objects",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": [
-        "node-12",
-        "node-13",
-        "node-14"
-      ]
-    },
-    {
-      "id": "node-12",
-      "parentId": "node-11",
-      "x": 1120,
-      "y": 410,
-      "w": 136,
-      "h": 54,
-      "text": "Blob",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": []
-    },
-    {
-      "id": "node-13",
-      "parentId": "node-11",
-      "x": 1120,
-      "y": 492,
-      "w": 136,
-      "h": 54,
-      "text": "Tree",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": []
-    },
-    {
-      "id": "node-14",
-      "parentId": "node-11",
-      "x": 1120,
-      "y": 574,
-      "w": 138,
-      "h": 54,
-      "text": "Commit",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": []
-    },
-    {
-      "id": "node-15",
-      "parentId": "node-9",
-      "x": 840,
-      "y": 656,
-      "w": 136,
-      "h": 54,
-      "text": "refs",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": []
-    },
-    {
-      "id": "node-16",
-      "parentId": "node-9",
-      "x": 840,
-      "y": 738,
-      "w": 136,
-      "h": 54,
-      "text": "HEAD",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": []
-    },
-    {
-      "id": "node-17",
-      "parentId": "node-9",
-      "x": 840,
-      "y": 820,
-      "w": 136,
-      "h": 54,
-      "text": "index",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 15,
-      "children": []
-    },
-    {
-      "id": "node-18",
-      "parentId": "node-1",
-      "x": 280,
-      "y": 902,
-      "w": 138,
-      "h": 54,
-      "text": "分支主题 2",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 16,
-      "children": []
-    },
-    {
-      "id": "node-19",
-      "parentId": "node-1",
-      "x": 280,
-      "y": 984,
-      "w": 138,
-      "h": 54,
-      "text": "分支主题 3",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 16,
-      "children": []
-    },
-    {
-      "id": "node-20",
-      "parentId": "node-1",
-      "x": 280,
-      "y": 1066,
-      "w": 138,
-      "h": 54,
-      "text": "分支主题 4",
-      "detail": "",
-      "detailHtml": "",
-      "detailLineGap": 0.5,
-      "color": "default",
-      "fontSize": 16,
-      "children": []
+    "summary": {
+      "id": "summary",
+      "title": "副画布",
+      "viewport": {
+        "scale": 1,
+        "tx": 420,
+        "ty": 300,
+        "inspectorWidth": 390
+      },
+      "nodes": [
+        {
+          "id": "node-1",
+          "parentId": null,
+          "x": 0,
+          "y": 0,
+          "w": 190,
+          "h": 92,
+          "text": "副画布",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 18,
+          "children": []
+        }
+      ],
+      "selection": {
+        "activeId": "node-1",
+        "selectedIds": [
+          "node-1"
+        ]
+      },
+      "counters": {
+        "nextId": 2
+      }
     }
-  ],
-  "selection": {
-    "activeId": "node-1",
-    "selectedIds": [
-      "node-1"
-    ]
-  },
-  "counters": {
-    "nextId": 21
   }
 }

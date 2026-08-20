@@ -39,6 +39,12 @@ const ZOOM_DEFAULT_MIN_SCALE = 0.08;
 const ZOOM_ABSOLUTE_MIN_SCALE = 0.01;
 const ZOOM_MAX_SCALE = 2.4;
 const FIT_VIEW_PADDING = 120;
+const CANVAS_MAIN_ID = "main";
+const CANVAS_SUMMARY_ID = "summary";
+const CANVAS_TITLES = {
+  [CANVAS_MAIN_ID]: "主画布",
+  [CANVAS_SUMMARY_ID]: "副画布",
+};
 
 const state = {
   mode: "pan",
@@ -57,6 +63,9 @@ const state = {
   modifierCreateActive: false,
   inspectorWidth: 390,
   projectMeta: null,
+  projectCanvases: null,
+  activeCanvasId: CANVAS_MAIN_ID,
+  canvasHistories: new Map(),
   currentFileName: "default.mindmap.json",
   fileHandle: null,
   autosaveTimer: null,
@@ -200,6 +209,7 @@ const els = {
   saveStatus: document.querySelector("#saveStatus"),
   fileInput: document.querySelector("#fileInput"),
   shell: document.querySelector("#canvasShell"),
+  canvasSwitcher: document.querySelector("#canvasSwitcher"),
   edgeSvg: document.querySelector("#edgeSvg"),
   edgeLayer: document.querySelector("#edgeLayer"),
   nodeLayer: document.querySelector("#nodeLayer"),
@@ -511,8 +521,14 @@ function setSaveStatus(text, status = "saved") {
   els.saveStatus.dataset.state = status;
 }
 
-function currentProjectDocument() {
-  const project = MindMapLogic.createProjectDocument({
+function canvasTitle(id) {
+  return state.projectCanvases?.[id]?.title || CANVAS_TITLES[id] || "画布";
+}
+
+function currentCanvasDocument() {
+  return MindMapLogic.createCanvasDocument({
+    id: state.activeCanvasId,
+    title: canvasTitle(state.activeCanvasId),
     nodes,
     viewport: {
       scale: state.scale,
@@ -527,33 +543,93 @@ function currentProjectDocument() {
     counters: {
       nextId: state.nextId,
     },
+  });
+}
+
+function ensureProjectCanvases() {
+  if (state.projectCanvases) return;
+  const project = MindMapLogic.createProjectDocument({
+    canvases: {
+      [CANVAS_MAIN_ID]: currentCanvasDocument(),
+    },
+    activeCanvasId: state.activeCanvasId,
+  });
+  state.projectCanvases = project.canvases;
+}
+
+function storeActiveCanvasState() {
+  ensureProjectCanvases();
+  state.projectCanvases[state.activeCanvasId] = currentCanvasDocument();
+}
+
+function currentProjectDocument() {
+  storeActiveCanvasState();
+  const project = MindMapLogic.createProjectDocument({
+    activeCanvasId: state.activeCanvasId,
+    canvases: state.projectCanvases,
     meta: state.projectMeta || {
       title: state.currentFileName.replace(/\.mindmap\.json$|\.json$/i, "") || "未命名思维导图",
     },
   });
   state.projectMeta = project.meta;
+  state.projectCanvases = project.canvases;
   return project;
+}
+
+function loadCanvasDocument(canvas) {
+  nodes.splice(0, nodes.length, ...canvas.nodes);
+  state.scale = canvas.viewport.scale;
+  state.tx = canvas.viewport.tx;
+  state.ty = canvas.viewport.ty;
+  state.nextId = canvas.counters.nextId;
+  state.selected = new Set(canvas.selection.selectedIds);
+  state.activeId = canvas.selection.activeId;
+  setInspectorWidth(canvas.viewport.inspectorWidth);
+}
+
+function resetCanvasTransientState() {
+  state.clipboard = null;
+  state.connectingFromIds = [];
+  state.detailUndoStacks = new Map();
+  state.detailFormatBrush = null;
+  state.detailImageClipboard = null;
+  clearDetailImageSelection();
+}
+
+function syncCanvasSwitcher() {
+  els.canvasSwitcher?.querySelectorAll("[data-canvas-id]").forEach((button) => {
+    const active = button.dataset.canvasId === state.activeCanvasId;
+    button.setAttribute("aria-pressed", String(active));
+  });
 }
 
 function applyProject(project, options = {}) {
   const normalized = MindMapLogic.normalizeProjectDocument(project);
   state.suppressAutosave = true;
-  nodes.splice(0, nodes.length, ...normalized.nodes);
   state.projectMeta = normalized.meta;
-  state.scale = normalized.viewport.scale;
-  state.tx = normalized.viewport.tx;
-  state.ty = normalized.viewport.ty;
-  state.nextId = normalized.counters.nextId;
-  state.selected = new Set(normalized.selection.selectedIds);
-  state.activeId = normalized.selection.activeId;
+  state.projectCanvases = normalized.canvases;
+  state.activeCanvasId = CANVAS_MAIN_ID;
+  loadCanvasDocument(state.projectCanvases[state.activeCanvasId]);
   state.history = [];
-  state.clipboard = null;
-  state.connectingFromIds = [];
-  setInspectorWidth(normalized.viewport.inspectorWidth);
+  state.canvasHistories = new Map();
+  resetCanvasTransientState();
   render();
+  syncCanvasSwitcher();
   if (options.fitView) fitView();
   state.dirty = false;
   state.suppressAutosave = false;
+}
+
+function switchCanvas(id) {
+  if (![CANVAS_MAIN_ID, CANVAS_SUMMARY_ID].includes(id) || id === state.activeCanvasId) return;
+  storeActiveCanvasState();
+  state.canvasHistories.set(state.activeCanvasId, state.history);
+  state.activeCanvasId = id;
+  loadCanvasDocument(state.projectCanvases[id]);
+  state.history = state.canvasHistories.get(id) || [];
+  resetCanvasTransientState();
+  render();
+  syncCanvasSwitcher();
 }
 
 function markDirty() {
@@ -2260,6 +2336,15 @@ els.detailFormatBrush.addEventListener("click", startDetailFormatBrush);
 els.detailLineNumbers.addEventListener("mousedown", (event) => event.preventDefault());
 els.detailLineNumbers.addEventListener("click", applyDetailLineNumbers);
 
+els.canvasSwitcher?.addEventListener("pointerdown", (event) => {
+  event.stopPropagation();
+});
+els.canvasSwitcher?.querySelectorAll("[data-canvas-id]").forEach((button) => {
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    switchCanvas(button.dataset.canvasId);
+  });
+});
 els.shell.addEventListener("pointerdown", onShellPointerDown);
 window.addEventListener("pointermove", onPointerMove);
 window.addEventListener("pointerup", onPointerUp);

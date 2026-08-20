@@ -37,6 +37,10 @@
       </header>
 
       <section id="canvasShell" class="canvas-shell" aria-label="思维导图画布">
+        <div id="canvasSwitcher" class="canvas-switcher" role="group" aria-label="画布切换">
+          <button type="button" data-canvas-id="main" aria-pressed="true">主画布</button>
+          <button type="button" data-canvas-id="summary" aria-pressed="false">副画布</button>
+        </div>
         <svg id="edgeSvg" class="edge-svg">
           <g id="edgeLayer"></g>
         </svg>

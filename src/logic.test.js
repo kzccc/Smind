@@ -223,7 +223,7 @@ run("connectNodes appends a child connection without removing existing children"
 
 run("connectNodes links mysql primary-key-index node to how-to-choose-primary-key", () => {
   const project = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "mysql.mindmap.json"), "utf8"));
-  const sample = JSON.parse(JSON.stringify(project.nodes));
+  const sample = JSON.parse(JSON.stringify(project.canvases?.main?.nodes || project.nodes));
   const result = connectNodes(sample, "node-49", "node-202");
   const source = sample.find((node) => node.id === "node-49");
   const target = sample.find((node) => node.id === "node-202");
@@ -266,16 +266,19 @@ run("createProjectDocument stores nodes, viewport, selection, and counters", () 
     now: "2026-08-15T01:00:00.000Z",
   });
 
-  assert.equal(project.schema, "mindmap.product.v1");
+  assert.equal(project.schema, "mindmap.product.v2");
   assert.equal(project.meta.title, "测试项目");
   assert.equal(project.meta.createdAt, "2026-08-15T00:00:00.000Z");
   assert.equal(project.meta.updatedAt, "2026-08-15T01:00:00.000Z");
-  assert.equal(project.nodes.length, nodes.length);
-  assert.deepEqual(project.viewport, { scale: 1.25, tx: 120, ty: 80, inspectorWidth: 520 });
-  assert.deepEqual(project.selection, { activeId: "a", selectedIds: ["a", "b"] });
-  assert.deepEqual(project.counters, { nextId: 42 });
+  assert.equal(project.activeCanvasId, "main");
+  assert.equal(project.canvases.main.title, "主画布");
+  assert.equal(project.canvases.summary.title, "副画布");
+  assert.equal(project.canvases.main.nodes.length, nodes.length);
+  assert.deepEqual(project.canvases.main.viewport, { scale: 1.25, tx: 120, ty: 80, inspectorWidth: 520 });
+  assert.deepEqual(project.canvases.main.selection, { activeId: "a", selectedIds: ["a", "b"] });
+  assert.deepEqual(project.canvases.main.counters, { nextId: 42 });
 
-  project.nodes[0].text = "changed";
+  project.canvases.main.nodes[0].text = "changed";
   assert.equal(nodes[0].text, "Root");
 });
 
@@ -284,16 +287,23 @@ run("normalizeProjectDocument fills missing project defaults", () => {
     nodes: [{ id: "x", x: 1, y: 2, w: 120, h: 50, text: "X", children: [] }],
   });
 
-  assert.equal(project.schema, "mindmap.product.v1");
-  assert.equal(project.nodes[0].parentId, null);
-  assert.equal(project.nodes[0].detail, "");
-  assert.equal(project.nodes[0].detailHtml, "");
-  assert.equal(project.nodes[0].detailLineGap, 0.5);
-  assert.equal(project.nodes[0].color, "default");
-  assert.equal(project.nodes[0].fontSize, 16);
-  assert.equal(project.viewport.scale, 1);
-  assert.equal(project.counters.nextId, 2);
-  assert.deepEqual(project.selection, { activeId: "x", selectedIds: ["x"] });
+  assert.equal(project.schema, "mindmap.product.v2");
+  assert.equal(project.activeCanvasId, "main");
+  assert.equal(project.canvases.main.nodes[0].parentId, null);
+  assert.equal(project.canvases.main.nodes[0].detail, "");
+  assert.equal(project.canvases.main.nodes[0].detailHtml, "");
+  assert.equal(project.canvases.main.nodes[0].detailLineGap, 0.5);
+  assert.equal(project.canvases.main.nodes[0].color, "default");
+  assert.equal(project.canvases.main.nodes[0].fontSize, 16);
+  assert.equal(project.canvases.main.viewport.scale, 1);
+  assert.equal(project.canvases.main.counters.nextId, 2);
+  assert.deepEqual(project.canvases.main.selection, { activeId: "x", selectedIds: ["x"] });
+  assert.equal(project.canvases.summary.id, "summary");
+  assert.equal(project.canvases.summary.nodes[0].text, "副画布");
+  assert.deepEqual(project.canvases.summary.selection, {
+    activeId: project.canvases.summary.nodes[0].id,
+    selectedIds: [project.canvases.summary.nodes[0].id],
+  });
 });
 
 run("normalizeProjectDocument derives rich detail html from plain text", () => {
@@ -301,9 +311,45 @@ run("normalizeProjectDocument derives rich detail html from plain text", () => {
     nodes: [{ id: "x", text: "X", detail: "第一行\n第二行", detailLineGap: 0.9, children: [] }],
   });
 
-  assert.equal(project.nodes[0].detail, "第一行\n第二行");
-  assert.equal(project.nodes[0].detailHtml, "第一行<br>第二行");
-  assert.equal(project.nodes[0].detailLineGap, 0.9);
+  assert.equal(project.canvases.main.nodes[0].detail, "第一行\n第二行");
+  assert.equal(project.canvases.main.nodes[0].detailHtml, "第一行<br>第二行");
+  assert.equal(project.canvases.main.nodes[0].detailLineGap, 0.9);
+});
+
+run("normalizeProjectDocument preserves independent v2 canvases", () => {
+  const project = normalizeProjectDocument({
+    schema: "mindmap.product.v2",
+    activeCanvasId: "summary",
+    meta: { title: "双画布项目", updatedAt: "2026-08-20T00:00:00.000Z" },
+    canvases: {
+      main: {
+        id: "main",
+        title: "主画布",
+        viewport: { scale: 0.8, tx: 10, ty: 20, inspectorWidth: 410 },
+        nodes: [{ id: "same-id", text: "主内容", children: [] }],
+        selection: { activeId: "same-id", selectedIds: ["same-id"] },
+        counters: { nextId: 7 },
+      },
+      summary: {
+        id: "summary",
+        title: "副画布",
+        viewport: { scale: 1.4, tx: 30, ty: 40, inspectorWidth: 430 },
+        nodes: [{ id: "same-id", text: "概要内容", color: "blue", children: [] }],
+        selection: { activeId: "same-id", selectedIds: ["same-id"] },
+        counters: { nextId: 3 },
+      },
+    },
+  });
+
+  assert.equal(project.schema, "mindmap.product.v2");
+  assert.equal(project.activeCanvasId, "summary");
+  assert.equal(project.canvases.main.nodes[0].text, "主内容");
+  assert.equal(project.canvases.summary.nodes[0].text, "概要内容");
+  assert.equal(project.canvases.summary.nodes[0].color, "blue");
+  assert.deepEqual(project.canvases.main.viewport, { scale: 0.8, tx: 10, ty: 20, inspectorWidth: 410 });
+  assert.deepEqual(project.canvases.summary.viewport, { scale: 1.4, tx: 30, ty: 40, inspectorWidth: 430 });
+  assert.deepEqual(project.canvases.main.counters, { nextId: 7 });
+  assert.deepEqual(project.canvases.summary.counters, { nextId: 3 });
 });
 
 run("projectToMarkdown exports a readable outline", () => {
