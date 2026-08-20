@@ -434,7 +434,7 @@ button:hover {
   border-left: 1px solid var(--line);
   background: var(--panel);
   padding: 18px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .inspector-resizer {
@@ -460,6 +460,43 @@ button:hover {
 .inspector-resizer:hover::after,
 body.inspector-resizing .inspector-resizer::after {
   background: var(--red);
+}
+
+.inspector-toggle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 31;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--muted);
+  box-shadow: 0 4px 12px rgba(31, 41, 51, .12);
+  transform: translate(-50%, -50%);
+}
+
+.inspector-toggle:hover {
+  background: #eef1f4;
+  color: var(--text);
+}
+
+.inspector-toggle-icon {
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(135deg);
+  transition: transform 120ms ease;
+}
+
+.inspector-toggle[aria-expanded="true"] .inspector-toggle-icon {
+  transform: rotate(-45deg);
 }
 
 .detail-editor {

@@ -109,6 +109,30 @@ async function run() {
     assert.equal(await page.locator('#canvasSwitcher [data-canvas-id="main"]').getAttribute("aria-pressed"), "true");
     console.log("ok default data loads");
 
+    const inspectorBeforeToggle = await page.locator("#inspector").evaluate((inspector) => ({
+      width: inspector.getBoundingClientRect().width,
+      viewportWidth: window.innerWidth,
+    }));
+    assert.equal(await page.locator("#inspectorToggle").count(), 1, "inspector toggle should exist");
+    await page.locator("#inspectorToggle").click();
+    const inspectorExpanded = await page.locator("#inspector").evaluate((inspector) => ({
+      width: inspector.getBoundingClientRect().width,
+      viewportWidth: window.innerWidth,
+    }));
+    assert.equal(await page.locator("#inspectorToggle").getAttribute("aria-expanded"), "true");
+    assert.equal(inspectorExpanded.width >= inspectorExpanded.viewportWidth - 2, true);
+    await waitSaved(page);
+    const expandedRecovery = await getStoredValue(page, "recovery-project");
+    assert.equal(
+      Math.round(expandedRecovery.project.canvases.main.viewport.inspectorWidth),
+      Math.round(inspectorBeforeToggle.width),
+    );
+    await page.locator("#inspectorToggle").click();
+    const inspectorRestored = await page.locator("#inspector").evaluate((inspector) => inspector.getBoundingClientRect().width);
+    assert.equal(await page.locator("#inspectorToggle").getAttribute("aria-expanded"), "false");
+    assert.equal(Math.round(inspectorRestored), Math.round(inspectorBeforeToggle.width));
+    console.log("ok inspector toggle expands and restores sidebar width");
+
     await page.locator('#canvasSwitcher [data-canvas-id="summary"]').click();
     await page.waitForFunction(() => document.querySelector('[data-id="node-1"] .node-title')?.innerText === "副画布");
     assert.equal(await page.locator('#canvasSwitcher [data-canvas-id="summary"]').getAttribute("aria-pressed"), "true");

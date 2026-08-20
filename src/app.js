@@ -62,6 +62,8 @@ const state = {
   connectingFromIds: [],
   modifierCreateActive: false,
   inspectorWidth: 390,
+  inspectorExpanded: false,
+  inspectorRestoreWidth: null,
   projectMeta: null,
   projectCanvases: null,
   activeCanvasId: CANVAS_MAIN_ID,
@@ -224,6 +226,7 @@ const els = {
   detailLineNumbers: document.querySelector("#detailLineNumbers"),
   inspectorResizer: document.querySelector("#inspectorResizer"),
   detailImageResizeHandle: document.querySelector("#detailImageResizeHandle"),
+  inspectorToggle: document.querySelector("#inspectorToggle"),
 };
 
 const renderCache = {
@@ -514,6 +517,29 @@ function setInspectorWidth(width) {
   const maxWidth = Math.max(minWidth, window.innerWidth);
   state.inspectorWidth = Math.max(minWidth, Math.min(maxWidth, width));
   els.app.style.setProperty("--inspector-width", `${state.inspectorWidth}px`);
+  syncInspectorToggle();
+}
+
+function syncInspectorToggle() {
+  if (!els.inspectorToggle) return;
+  els.inspectorToggle.setAttribute("aria-expanded", String(state.inspectorExpanded));
+  const label = state.inspectorExpanded ? "恢复侧边栏宽度" : "展开侧边栏";
+  els.inspectorToggle.setAttribute("aria-label", label);
+  els.inspectorToggle.title = label;
+}
+
+function toggleInspectorExpanded() {
+  if (state.inspectorExpanded) {
+    state.inspectorExpanded = false;
+    const restoreWidth = state.inspectorRestoreWidth ?? 390;
+    state.inspectorRestoreWidth = null;
+    setInspectorWidth(restoreWidth);
+  } else {
+    state.inspectorRestoreWidth = state.inspectorWidth;
+    state.inspectorExpanded = true;
+    setInspectorWidth(window.innerWidth);
+  }
+  markDirty();
 }
 
 function setSaveStatus(text, status = "saved") {
@@ -534,7 +560,9 @@ function currentCanvasDocument() {
       scale: state.scale,
       tx: state.tx,
       ty: state.ty,
-      inspectorWidth: state.inspectorWidth,
+      inspectorWidth: state.inspectorExpanded
+        ? state.inspectorRestoreWidth ?? 390
+        : state.inspectorWidth,
     },
     selection: {
       activeId: state.activeId,
@@ -609,6 +637,8 @@ function applyProject(project, options = {}) {
   state.projectMeta = normalized.meta;
   state.projectCanvases = normalized.canvases;
   state.activeCanvasId = CANVAS_MAIN_ID;
+  state.inspectorExpanded = false;
+  state.inspectorRestoreWidth = null;
   loadCanvasDocument(state.projectCanvases[state.activeCanvasId]);
   state.history = [];
   state.canvasHistories = new Map();
@@ -625,6 +655,8 @@ function switchCanvas(id) {
   storeActiveCanvasState();
   state.canvasHistories.set(state.activeCanvasId, state.history);
   state.activeCanvasId = id;
+  state.inspectorExpanded = false;
+  state.inspectorRestoreWidth = null;
   loadCanvasDocument(state.projectCanvases[id]);
   state.history = state.canvasHistories.get(id) || [];
   resetCanvasTransientState();
@@ -1984,6 +2016,11 @@ function onInspectorResizeStart(event) {
   if (event.button !== 0) return;
   event.preventDefault();
   event.stopPropagation();
+  if (state.inspectorExpanded) {
+    state.inspectorExpanded = false;
+    state.inspectorRestoreWidth = null;
+    syncInspectorToggle();
+  }
   state.pointer = {
     type: "inspector-resize",
     startX: event.clientX,
@@ -2345,6 +2382,15 @@ els.canvasSwitcher?.querySelectorAll("[data-canvas-id]").forEach((button) => {
     switchCanvas(button.dataset.canvasId);
   });
 });
+els.inspectorToggle?.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+});
+els.inspectorToggle?.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  toggleInspectorExpanded();
+});
 els.shell.addEventListener("pointerdown", onShellPointerDown);
 window.addEventListener("pointermove", onPointerMove);
 window.addEventListener("pointerup", onPointerUp);
@@ -2368,7 +2414,7 @@ window.addEventListener("keyup", (event) => {
   }
 });
 window.addEventListener("resize", () => {
-  setInspectorWidth(state.inspectorWidth);
+  setInspectorWidth(state.inspectorExpanded ? window.innerWidth : state.inspectorWidth);
   render();
   positionDetailImageResizeHandle();
 });
