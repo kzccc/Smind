@@ -473,17 +473,17 @@ body.inspector-resizing .inspector-resizer::after {
   height: 32px;
   min-height: 32px;
   padding: 0;
-  border: 1px solid var(--line-strong);
+  border: 1px solid #c8a100;
   border-radius: 6px;
-  background: var(--panel);
-  color: var(--muted);
+  background: #ffd84d;
+  color: #1f2933;
   box-shadow: 0 4px 12px rgba(31, 41, 51, .12);
   transform: translate(-50%, -50%);
 }
 
 .inspector-toggle:hover {
-  background: #eef1f4;
-  color: var(--text);
+  background: #ffe36d;
+  color: #111827;
 }
 
 .inspector-toggle-icon {
