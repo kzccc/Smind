@@ -443,11 +443,8 @@
     if (!source || !target) return false;
     if (collectSubtreeIds(nodes, targetId).includes(sourceId)) return false;
 
-    nodes.forEach((node) => {
-      node.children = node.children.filter((childId) => childId !== targetId);
-    });
     if (!source.children.includes(targetId)) source.children.push(targetId);
-    target.parentId = sourceId;
+    if (!target.parentId) target.parentId = sourceId;
     return true;
   }
 
@@ -462,14 +459,11 @@
     if (!target) return false;
     if (collectSubtreeIds(nodes, targetId).some((id) => uniqueSourceIds.includes(id))) return false;
 
-    nodes.forEach((node) => {
-      node.children = node.children.filter((childId) => childId !== targetId);
-    });
     uniqueSourceIds.forEach((sourceId) => {
       const source = map[sourceId];
       if (source && !source.children.includes(targetId)) source.children.push(targetId);
     });
-    target.parentId = uniqueSourceIds[0];
+    if (!target.parentId) target.parentId = uniqueSourceIds[0];
     return true;
   }
 

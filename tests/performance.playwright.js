@@ -56,6 +56,57 @@ async function run() {
     assert.equal(wheelStable.count, wheelStable.before, "zoom should preserve node count");
     console.log("ok zoom keeps node DOM stable");
 
+    const visibleStats = await page.evaluate(() => {
+      const all = [...document.querySelectorAll(".node")];
+      return {
+        total: all.length,
+        visible: all.filter((node) => node.style.display !== "none").length,
+      };
+    });
+    assert.equal(visibleStats.total, mysqlProjectNodeCount);
+    assert.equal(visibleStats.visible < visibleStats.total, true, "large map should cull offscreen nodes");
+    console.log(`ok viewport culling hides offscreen nodes (${visibleStats.visible}/${visibleStats.total} visible)`);
+
+    await page.mouse.move(520, 420);
+    for (let index = 0; index < 18; index += 1) {
+      await page.mouse.wheel(0, 900);
+    }
+    await page.waitForTimeout(120);
+    const zoomOutFit = await page.evaluate(() => {
+      const shell = document.querySelector("#canvasShell").getBoundingClientRect();
+      const nodes = [...document.querySelectorAll(".node")];
+      const bounds = nodes.reduce(
+        (acc, node) => {
+          const style = getComputedStyle(node);
+          const left = parseFloat(style.left);
+          const top = parseFloat(style.top);
+          const width = parseFloat(style.width);
+          const height = parseFloat(style.height);
+          return {
+            minX: Math.min(acc.minX, left),
+            minY: Math.min(acc.minY, top),
+            maxX: Math.max(acc.maxX, left + width),
+            maxY: Math.max(acc.maxY, top + height),
+          };
+        },
+        { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+      );
+      const mapWidth = bounds.maxX - bounds.minX;
+      const mapHeight = bounds.maxY - bounds.minY;
+      const requiredScale = Math.min((shell.width - 120) / mapWidth, (shell.height - 120) / mapHeight);
+      const transform = new DOMMatrixReadOnly(getComputedStyle(document.querySelector("#nodeLayer")).transform);
+      return {
+        scale: transform.a,
+        requiredScale,
+      };
+    });
+    assert.equal(
+      zoomOutFit.scale <= zoomOutFit.requiredScale + 0.01,
+      true,
+      `zoom should allow large maps to shrink enough for whole-map view, got ${zoomOutFit.scale}, need ${zoomOutFit.requiredScale}`,
+    );
+    console.log("ok zoom can shrink a large map enough for whole-map view");
+
     await page.evaluate(() => {
       window.__firstNodeElement = document.querySelector(".node");
     });
@@ -71,16 +122,6 @@ async function run() {
     assert.equal(panStable.stillConnected, true, "pan should keep node DOM connected");
     console.log("ok pan keeps node DOM stable");
 
-    const visibleStats = await page.evaluate(() => {
-      const all = [...document.querySelectorAll(".node")];
-      return {
-        total: all.length,
-        visible: all.filter((node) => node.style.display !== "none").length,
-      };
-    });
-    assert.equal(visibleStats.total, mysqlProjectNodeCount);
-    assert.equal(visibleStats.visible < visibleStats.total, true, "large map should cull offscreen nodes");
-    console.log(`ok viewport culling hides offscreen nodes (${visibleStats.visible}/${visibleStats.total} visible)`);
   } finally {
     await context.close();
   }

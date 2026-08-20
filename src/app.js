@@ -35,6 +35,11 @@ const detailFontColors = {
   black: "#000000",
 };
 
+const ZOOM_DEFAULT_MIN_SCALE = 0.08;
+const ZOOM_ABSOLUTE_MIN_SCALE = 0.01;
+const ZOOM_MAX_SCALE = 2.4;
+const FIT_VIEW_PADDING = 120;
+
 const state = {
   mode: "pan",
   scale: 1,
@@ -62,6 +67,9 @@ const state = {
   detailUndoStacks: new Map(),
   restoringDetail: false,
   detailFormatBrush: null,
+  detailImage: null,
+  detailImageResize: null,
+  detailImageClipboard: null,
 };
 
 const nodes = [
@@ -205,6 +213,7 @@ const els = {
   detailFormatBrush: document.querySelector("#detailFormatBrush"),
   detailLineNumbers: document.querySelector("#detailLineNumbers"),
   inspectorResizer: document.querySelector("#inspectorResizer"),
+  detailImageResizeHandle: document.querySelector("#detailImageResizeHandle"),
 };
 
 const renderCache = {
@@ -283,6 +292,12 @@ function normalizeDetailLineGap(value) {
   return Math.max(0.1, Math.min(0.9, Math.round(number * 10) / 10));
 }
 
+function normalizeDetailImageDimension(value, fallback = null) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return fallback;
+  return Math.max(48, Math.min(1600, Math.round(number)));
+}
+
 function detailLineHeight(gap) {
   return (1 + normalizeDetailLineGap(gap)).toFixed(1);
 }
@@ -296,6 +311,10 @@ function detailTextOffsetFromRange(range) {
   before.selectNodeContents(els.nodeDetail);
   before.setEnd(range.endContainer, range.endOffset);
   return before.toString().length;
+}
+
+function isSafeDetailImageSource(source) {
+  return /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+$/i.test(String(source || ""));
 }
 
 function restoreDetailCaretAtTextOffset(offset) {
@@ -373,6 +392,19 @@ function sanitizeDetailHtml(html) {
       appendBreak();
       return;
     }
+    if (tag === "img") {
+      const src = source.getAttribute("src") || "";
+      if (!isSafeDetailImageSource(src)) return;
+      const image = document.createElement("img");
+      image.src = src;
+      image.alt = "";
+      const width = normalizeDetailImageDimension(source.getAttribute("width"));
+      const height = normalizeDetailImageDimension(source.getAttribute("height"));
+      if (width !== null) image.setAttribute("width", String(width));
+      if (height !== null) image.setAttribute("height", String(height));
+      output.append(image);
+      return;
+    }
 
     const nextFormat = { ...format };
     if (source.style.backgroundColor) nextFormat.backgroundColor = source.style.backgroundColor;
@@ -428,6 +460,7 @@ function restoreDetailSnapshot(snapshotValue) {
   els.nodeDetail.innerHTML = node.detailHtml;
   els.nodeDetail.style.lineHeight = detailLineHeight(node.detailLineGap);
   els.detailLineGap.value = String(node.detailLineGap);
+  clearDetailImageSelection();
   updateNodeDom(node.id);
   state.restoringDetail = false;
   markDirty();
@@ -776,6 +809,7 @@ function selectOnly(id) {
 }
 
 function syncInspector() {
+  clearDetailImageSelection();
   const node = byId(state.activeId);
   if (!node) {
     if (els.nodeDetail.innerHTML !== "") els.nodeDetail.innerHTML = "";
@@ -1106,13 +1140,242 @@ function plainTextFromClipboard(event) {
   return holder.innerText || holder.textContent || "";
 }
 
+function insertImageAtDetailSelection(src, selectionRange = null, dimensions = {}) {
+  const selection = window.getSelection();
+  let range = selectionRange || getDetailRange();
+  if (!range) {
+    range = document.createRange();
+    range.selectNodeContents(els.nodeDetail);
+    range.collapse(false);
+  }
+  range.deleteContents();
+
+  const image = document.createElement("img");
+  image.src = src;
+  image.alt = "";
+  const width = normalizeDetailImageDimension(dimensions.width);
+  const height = normalizeDetailImageDimension(dimensions.height);
+  if (width !== null) image.setAttribute("width", String(width));
+  if (height !== null) image.setAttribute("height", String(height));
+  range.insertNode(image);
+  collapseDetailSelectionAfter(image);
+}
+
+function safeImageFromClipboardHtml(event) {
+  const html = event.clipboardData?.getData("text/html");
+  if (!html) return null;
+  const holder = document.createElement("div");
+  holder.innerHTML = html;
+  const source = [...holder.querySelectorAll("img")]
+    .find((image) => isSafeDetailImageSource(image.getAttribute("src")));
+  if (!source) return null;
+  return {
+    src: source.getAttribute("src"),
+    width: source.getAttribute("width"),
+    height: source.getAttribute("height"),
+  };
+}
+
 function pasteIntoDetailEditor(event) {
+  const imageItem = [...(event.clipboardData?.items || [])]
+    .find((item) => item.kind === "file" && item.type.startsWith("image/"));
+  const imageFile = imageItem?.getAsFile();
+  if (imageFile) {
+    event.preventDefault();
+    pushDetailUndo();
+    const selectionRange = getDetailRange()?.cloneRange() || null;
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      const source = String(reader.result || "");
+      if (!isSafeDetailImageSource(source)) return;
+      insertImageAtDetailSelection(source, selectionRange);
+      syncNodeDetailFromEditor();
+    }, { once: true });
+    reader.readAsDataURL(imageFile);
+    return;
+  }
+
+  const clipboardImage = safeImageFromClipboardHtml(event);
+  if (clipboardImage) {
+    event.preventDefault();
+    pushDetailUndo();
+    insertImageAtDetailSelection(
+      clipboardImage.src,
+      getDetailRange()?.cloneRange() || null,
+      clipboardImage,
+    );
+    syncNodeDetailFromEditor();
+    return;
+  }
+
+  const plainClipboardText = event.clipboardData?.getData("text/plain") || "";
+  const clipboardTypes = [...(event.clipboardData?.types || [])];
+  if (
+    state.detailImageClipboard
+    && !plainClipboardText
+    && (clipboardTypes.length === 0 || clipboardTypes.includes("text/html"))
+  ) {
+    event.preventDefault();
+    pushDetailUndo();
+    const holder = document.createElement("div");
+    holder.innerHTML = state.detailImageClipboard;
+    const image = holder.querySelector("img");
+    if (image) {
+      insertImageAtDetailSelection(
+        image.getAttribute("src"),
+        getDetailRange()?.cloneRange() || null,
+        {
+          width: image.getAttribute("width"),
+          height: image.getAttribute("height"),
+        },
+      );
+      syncNodeDetailFromEditor();
+    }
+    return;
+  }
+
   const text = plainTextFromClipboard(event);
   if (!text) return;
   event.preventDefault();
   pushDetailUndo();
   insertPlainTextAtDetailSelection(text);
   syncNodeDetailFromEditor();
+}
+
+function mapBounds() {
+  if (nodes.length === 0) return null;
+  return nodes.reduce(
+    (acc, node) => ({
+      minX: Math.min(acc.minX, node.x),
+      minY: Math.min(acc.minY, node.y),
+      maxX: Math.max(acc.maxX, node.x + node.w),
+      maxY: Math.max(acc.maxY, node.y + node.h),
+    }),
+    { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+  );
+}
+
+function scaleRequiredForWholeMap() {
+  const bounds = mapBounds();
+  if (!bounds) return ZOOM_DEFAULT_MIN_SCALE;
+  const rect = els.shell.getBoundingClientRect();
+  const mapW = Math.max(1, bounds.maxX - bounds.minX);
+  const mapH = Math.max(1, bounds.maxY - bounds.minY);
+  const availableW = Math.max(1, rect.width - FIT_VIEW_PADDING);
+  const availableH = Math.max(1, rect.height - FIT_VIEW_PADDING);
+  return Math.min(availableW / mapW, availableH / mapH);
+}
+
+function minZoomScale() {
+  return Math.max(
+    ZOOM_ABSOLUTE_MIN_SCALE,
+    Math.min(ZOOM_DEFAULT_MIN_SCALE, scaleRequiredForWholeMap()),
+  );
+}
+
+function positionDetailImageResizeHandle() {
+  const image = state.detailImage;
+  const handle = els.detailImageResizeHandle;
+  const container = handle?.parentElement;
+  if (!image || !handle || !container || !image.isConnected) {
+    handle?.classList.remove("visible");
+    return;
+  }
+  const imageRect = image.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  handle.style.left = `${imageRect.right - containerRect.left - 6}px`;
+  handle.style.top = `${imageRect.bottom - containerRect.top - 6}px`;
+}
+
+function clearDetailImageSelection() {
+  if (state.detailImage) state.detailImage.classList.remove("detail-image-selected");
+  state.detailImage = null;
+  state.detailImageResize = null;
+  els.detailImageResizeHandle.classList.remove("visible");
+}
+
+function selectDetailImage(image) {
+  if (state.detailImage && state.detailImage !== image) {
+    state.detailImage.classList.remove("detail-image-selected");
+  }
+  state.detailImage = image;
+  image.classList.add("detail-image-selected");
+  els.detailImageResizeHandle.classList.add("visible");
+  const range = document.createRange();
+  range.selectNode(image);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  positionDetailImageResizeHandle();
+}
+
+function copySelectedDetailImage(event = null) {
+  const image = state.detailImage;
+  if (!image || !image.isConnected) return false;
+  const html = sanitizeDetailHtml(image.outerHTML);
+  if (!html) return false;
+  state.detailImageClipboard = html;
+  if (event?.clipboardData) {
+    event.preventDefault();
+    event.clipboardData.setData("text/html", html);
+    event.clipboardData.setData("text/plain", "");
+    return true;
+  }
+
+  const selection = window.getSelection();
+  const previousRanges = [];
+  for (let index = 0; index < selection.rangeCount; index += 1) {
+    previousRanges.push(selection.getRangeAt(index).cloneRange());
+  }
+  const range = document.createRange();
+  range.selectNode(image);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  try {
+    document.execCommand("copy");
+  } catch (error) {
+    // The internal clipboard remains available when browser clipboard access is blocked.
+  }
+  selection.removeAllRanges();
+  previousRanges.forEach((previousRange) => selection.addRange(previousRange));
+  return true;
+}
+
+function beginDetailImageResize(event) {
+  const image = state.detailImage;
+  if (!image) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const rect = image.getBoundingClientRect();
+  const ratio = image.naturalWidth > 0 && image.naturalHeight > 0
+    ? image.naturalWidth / image.naturalHeight
+    : rect.width / Math.max(1, rect.height);
+  pushDetailUndo();
+  state.detailImageResize = {
+    image,
+    startX: event.clientX,
+    startWidth: rect.width,
+    startRatio: ratio || 1,
+  };
+  els.detailImageResizeHandle.setPointerCapture?.(event.pointerId);
+}
+
+function updateDetailImageResize(event) {
+  const resize = state.detailImageResize;
+  if (!resize) return;
+  const editorRect = els.nodeDetail.getBoundingClientRect();
+  const maxWidth = Math.min(1600, Math.max(48, editorRect.width - 28));
+  const width = Math.max(48, Math.min(maxWidth, resize.startWidth + event.clientX - resize.startX));
+  const height = Math.max(48, Math.round(width / resize.startRatio));
+  resize.image.setAttribute("width", String(Math.round(width)));
+  resize.image.setAttribute("height", String(height));
+  syncNodeDetailFromEditor();
+  positionDetailImageResizeHandle();
+}
+
+function endDetailImageResize() {
+  if (!state.detailImageResize) return;
+  state.detailImageResize = null;
 }
 
 function tidySelected() {
@@ -1123,20 +1386,12 @@ function tidySelected() {
 }
 
 function fitView() {
-  if (nodes.length === 0) return;
-  const bounds = nodes.reduce(
-    (acc, node) => ({
-      minX: Math.min(acc.minX, node.x),
-      minY: Math.min(acc.minY, node.y),
-      maxX: Math.max(acc.maxX, node.x + node.w),
-      maxY: Math.max(acc.maxY, node.y + node.h),
-    }),
-    { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
-  );
+  const bounds = mapBounds();
+  if (!bounds) return;
   const rect = els.shell.getBoundingClientRect();
   const mapW = bounds.maxX - bounds.minX;
   const mapH = bounds.maxY - bounds.minY;
-  state.scale = Math.max(0.55, Math.min(1.25, Math.min((rect.width - 120) / mapW, (rect.height - 120) / mapH)));
+  state.scale = Math.max(ZOOM_ABSOLUTE_MIN_SCALE, Math.min(1.25, scaleRequiredForWholeMap()));
   state.tx = (rect.width - mapW * state.scale) / 2 - bounds.minX * state.scale;
   state.ty = (rect.height - mapH * state.scale) / 2 - bounds.minY * state.scale;
   render();
@@ -1202,9 +1457,12 @@ function createSummaryNodeFromSelection() {
 }
 
 function beginConnection() {
-  const sourceIds = state.selected.size > 0 ? [...state.selected] : [state.activeId].filter(Boolean);
+  let sourceIds = state.selected.size > 0 ? [...state.selected] : [state.activeId].filter(Boolean);
   if (sourceIds.length === 0) return;
-  if (sourceIds.length > 1 && !MindMapLogic.canCreateSummaryNode(nodes, sourceIds)) return;
+  if (sourceIds.length > 1 && !MindMapLogic.canCreateSummaryNode(nodes, sourceIds)) {
+    sourceIds = [state.activeId].filter(Boolean);
+  }
+  if (sourceIds.length === 0) return;
   state.connectingFromIds = sourceIds;
   render();
 }
@@ -1803,7 +2061,7 @@ function onWheel(event) {
   const local = clientToLocal(event.clientX, event.clientY);
   const before = screenToWorld(event.clientX, event.clientY);
   const factor = event.deltaY < 0 ? 1.1872 : 0.8128;
-  state.scale = Math.max(0.35, Math.min(2.4, state.scale * factor));
+  state.scale = Math.max(minZoomScale(), Math.min(ZOOM_MAX_SCALE, state.scale * factor));
   state.tx = local.x - before.x * state.scale;
   state.ty = local.y - before.y * state.scale;
   updateViewport();
@@ -1841,6 +2099,12 @@ function onKeyDown(event) {
     event.preventDefault();
     event.stopPropagation();
     undoDetailEditor();
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c" && state.detailImage && isDetailEditorActive()) {
+    event.preventDefault();
+    event.stopPropagation();
+    copySelectedDetailImage();
     return;
   }
   if (event.key === "Escape" && state.detailFormatBrush) {
@@ -1897,7 +2161,7 @@ function onKeyDown(event) {
     createSummaryNodeFromSelection();
     return;
   }
-  if ((event.ctrlKey || event.metaKey) && event.code === "Space") {
+  if ((event.ctrlKey || event.metaKey) && event.shiftKey && (event.key === "Control" || event.key === "Shift")) {
     event.preventDefault();
     beginConnection();
     return;
@@ -1946,6 +2210,17 @@ els.nodeDetail.addEventListener("input", () => {
 });
 els.nodeDetail.addEventListener("paste", pasteIntoDetailEditor);
 els.nodeDetail.addEventListener("mouseup", paintDetailFormatBrush);
+els.nodeDetail.addEventListener("click", (event) => {
+  if (event.target instanceof HTMLImageElement) {
+    selectDetailImage(event.target);
+    return;
+  }
+  clearDetailImageSelection();
+});
+els.nodeDetail.addEventListener("scroll", positionDetailImageResizeHandle);
+els.detailImageResizeHandle.addEventListener("pointerdown", beginDetailImageResize);
+window.addEventListener("pointermove", updateDetailImageResize);
+window.addEventListener("pointerup", endDetailImageResize);
 els.detailLineGap.addEventListener("change", () => {
   const node = byId(state.activeId);
   if (!node) return;
@@ -1993,6 +2268,11 @@ window.addEventListener("mousemove", (event) => {
 });
 els.inspectorResizer.addEventListener("pointerdown", onInspectorResizeStart);
 els.shell.addEventListener("wheel", onWheel, { passive: false });
+document.addEventListener("copy", (event) => {
+  if (event.target === els.nodeDetail || els.nodeDetail.contains(event.target)) {
+    copySelectedDetailImage(event);
+  }
+}, true);
 window.addEventListener("keydown", onKeyDown);
 window.addEventListener("keyup", (event) => {
   if (!event.ctrlKey || !event.altKey) {
@@ -2005,6 +2285,7 @@ window.addEventListener("keyup", (event) => {
 window.addEventListener("resize", () => {
   setInspectorWidth(state.inspectorWidth);
   render();
+  positionDetailImageResizeHandle();
 });
 window.addEventListener("beforeunload", (event) => {
   if (!state.dirty && !state.saving) return;

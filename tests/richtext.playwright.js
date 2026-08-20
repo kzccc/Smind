@@ -237,6 +237,107 @@ async function run() {
     console.log("ok pasted rich text uses inspector default font size immediately");
 
     await page.locator("#nodeDetail").evaluate((editor) => {
+      editor.innerHTML = "图片前文字图片后";
+      editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+      const textNode = editor.firstChild;
+      const range = document.createRange();
+      range.setStart(textNode, 3);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+    const imagePaste = await page.evaluate(() => {
+      const pngBytes = Uint8Array.from([
+        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13,
+        73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6,
+        0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73,
+        68, 65, 84, 120, 156, 99, 248, 207, 192, 240, 31,
+        0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0,
+        0, 73, 69, 78, 68, 174, 66, 96, 130,
+      ]);
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(new File([pngBytes], "pasted.png", { type: "image/png" }));
+      document.querySelector("#nodeDetail").dispatchEvent(new ClipboardEvent("paste", {
+        bubbles: true,
+        cancelable: true,
+        clipboardData: dataTransfer,
+      }));
+      return true;
+    });
+    assert.equal(imagePaste, true);
+    await page.waitForSelector("#nodeDetail img");
+    const pastedImage = await page.locator("#nodeDetail").evaluate((editor) => ({
+      text: editor.innerText,
+      imageCount: editor.querySelectorAll("img").length,
+      imageSrc: editor.querySelector("img")?.getAttribute("src") || "",
+    }));
+    assert.equal(pastedImage.text, "图片前文字图片后");
+    assert.equal(pastedImage.imageCount, 1);
+    assert.equal(pastedImage.imageSrc.startsWith("data:image/png;base64,"), true);
+    await waitSaved(page);
+    const imageRecovery = await getStoredValue(page, "recovery-project");
+    assert.equal(imageRecovery.project.nodes[0].detail, "图片前文字图片后");
+    assert.equal(imageRecovery.project.nodes[0].detailHtml.includes("<img"), true);
+    await page.locator('[data-id="node-2"]').click();
+    await page.locator('[data-id="node-1"]').click();
+    assert.equal(await page.locator("#nodeDetail img").count(), 1);
+    await page.locator("#nodeDetail img").click();
+    await page.waitForSelector("#detailImageResizeHandle.visible");
+    const originalImageSize = await page.locator("#nodeDetail img").evaluate((image) => ({
+      width: image.getBoundingClientRect().width,
+      height: image.getBoundingClientRect().height,
+    }));
+    const resizeHandle = await page.locator("#detailImageResizeHandle").boundingBox();
+    assert.ok(resizeHandle);
+    await page.mouse.move(resizeHandle.x + resizeHandle.width / 2, resizeHandle.y + resizeHandle.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(resizeHandle.x + resizeHandle.width / 2 + 80, resizeHandle.y + resizeHandle.height / 2 + 80);
+    await page.mouse.up();
+    const resizedImage = await page.locator("#nodeDetail img").evaluate((image) => ({
+      width: image.getBoundingClientRect().width,
+      height: image.getBoundingClientRect().height,
+      widthAttribute: image.getAttribute("width"),
+      heightAttribute: image.getAttribute("height"),
+    }));
+    assert.equal(resizedImage.width > originalImageSize.width, true);
+    assert.equal(
+      Math.round(resizedImage.width / resizedImage.height * 100),
+      Math.round(originalImageSize.width / originalImageSize.height * 100),
+    );
+    assert.equal(Number(resizedImage.widthAttribute) > 0, true);
+    assert.equal(Number(resizedImage.heightAttribute) > 0, true);
+    await waitSaved(page);
+    const resizedRecovery = await getStoredValue(page, "recovery-project");
+    assert.equal(resizedRecovery.project.nodes[0].detailHtml.includes(`width="${resizedImage.widthAttribute}"`), true);
+    assert.equal(resizedRecovery.project.nodes[0].detailHtml.includes(`height="${resizedImage.heightAttribute}"`), true);
+    await page.locator('[data-id="node-2"]').click();
+    await page.locator('[data-id="node-1"]').click();
+    const restoredImageSize = await page.locator("#nodeDetail img").evaluate((image) => ({
+      width: image.getAttribute("width"),
+      height: image.getAttribute("height"),
+    }));
+    assert.deepEqual(restoredImageSize, {
+      width: resizedImage.widthAttribute,
+      height: resizedImage.heightAttribute,
+    });
+    await page.locator("#nodeDetail img").click();
+    await page.locator('[data-id="node-2"]').click();
+    await page.locator("#nodeDetail").click();
+    await page.locator('[data-id="node-1"]').click();
+    await page.locator("#nodeDetail img").click();
+    await page.keyboard.press("ControlOrMeta+C");
+    await page.locator('[data-id="node-2"]').click();
+    await page.locator("#nodeDetail").click();
+    await page.keyboard.press("ControlOrMeta+V");
+    await page.waitForSelector("#nodeDetail img");
+    assert.equal(await page.locator("#nodeDetail img").count(), 1);
+    console.log("ok selected detail images copy and paste into another node");
+
+    await page.locator('[data-id="node-1"]').click();
+    console.log("ok clipboard images render and persist in node detail");
+
+    await page.locator("#nodeDetail").evaluate((editor) => {
       editor.innerHTML = '<span style="color: rgb(47, 111, 159);">已有蓝色</span>';
       editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
     });

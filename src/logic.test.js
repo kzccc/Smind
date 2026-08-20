@@ -1,4 +1,6 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
   rectFromPoints,
   rectsOverlap,
@@ -192,7 +194,7 @@ run("canCreateSummaryNode only allows multiple selected siblings with the same p
   assert.equal(canCreateSummaryNode(nodes, ["root", "a"]), false);
 });
 
-run("connectNodes reparents target and prevents cycles", () => {
+run("connectNodes appends target as a child and prevents cycles", () => {
   const sample = JSON.parse(JSON.stringify(nodes));
   const result = connectNodes(sample, "a2", "b1");
   const a2 = sample.find((node) => node.id === "a2");
@@ -201,9 +203,35 @@ run("connectNodes reparents target and prevents cycles", () => {
 
   assert.equal(result, true);
   assert.deepEqual(a2.children, ["b1"]);
-  assert.deepEqual(b.children, ["b2"]);
-  assert.equal(b1.parentId, "a2");
+  assert.deepEqual(b.children, ["b1", "b2"]);
+  assert.equal(b1.parentId, "b");
   assert.equal(connectNodes(sample, "b1", "a2"), false);
+});
+
+run("connectNodes appends a child connection without removing existing children", () => {
+  const sample = JSON.parse(JSON.stringify(nodes));
+  const result = connectNodes(sample, "a", "b1");
+  const a = sample.find((node) => node.id === "a");
+  const b = sample.find((node) => node.id === "b");
+  const b1 = sample.find((node) => node.id === "b1");
+
+  assert.equal(result, true);
+  assert.deepEqual(a.children, ["a1", "a2", "b1"]);
+  assert.deepEqual(b.children, ["b1", "b2"]);
+  assert.equal(b1.parentId, "b");
+});
+
+run("connectNodes links mysql primary-key-index node to how-to-choose-primary-key", () => {
+  const project = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "mysql.mindmap.json"), "utf8"));
+  const sample = JSON.parse(JSON.stringify(project.nodes));
+  const result = connectNodes(sample, "node-49", "node-202");
+  const source = sample.find((node) => node.id === "node-49");
+  const target = sample.find((node) => node.id === "node-202");
+
+  assert.equal(result, true);
+  assert.equal(source.children.includes("node-50"), true);
+  assert.equal(source.children.includes("node-202"), true);
+  assert.equal(target.text, "如何选择主键");
 });
 
 run("connectManyNodes allows sibling sources to share one target", () => {
@@ -217,8 +245,8 @@ run("connectManyNodes allows sibling sources to share one target", () => {
   assert.equal(result, true);
   assert.equal(a1.children.includes("b1"), true);
   assert.equal(a2.children.includes("b1"), true);
-  assert.equal(b.children.includes("b1"), false);
-  assert.equal(b1.parentId, "a1");
+  assert.equal(b.children.includes("b1"), true);
+  assert.equal(b1.parentId, "b");
 });
 
 run("connectManyNodes rejects mixed-level sources and cycles", () => {

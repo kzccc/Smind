@@ -84,6 +84,37 @@ async function run() {
 
     await page.reload();
     await page.waitForSelector(".node");
+    await page.locator('[data-id="node-1"]').click();
+    await page.keyboard.down("Control");
+    await page.locator('[data-id="node-2"]').click();
+    await page.keyboard.up("Control");
+    const edgeCountBeforeConnect = await page.locator(".edge").count();
+    await page.keyboard.down("Control");
+    await page.keyboard.down("Shift");
+    const connectingState = await page.locator('[data-id="node-2"]').evaluate((node) => {
+      const ring = getComputedStyle(node, "::after");
+      return {
+        connecting: node.classList.contains("connecting"),
+        borderColor: ring.borderTopColor,
+        boxShadow: ring.boxShadow,
+      };
+    });
+    assert.equal(connectingState.connecting, true, "Ctrl+Shift should use the active node when selected nodes cannot form a multi-source connection");
+    assert.equal(
+      connectingState.borderColor === "rgb(47, 111, 159)" || connectingState.boxShadow.includes("47, 111, 159"),
+      true,
+      "connection source should show a blue outer ring",
+    );
+    await page.locator('[data-id="node-3"]').click();
+    await page.waitForTimeout(80);
+    const edgeCountAfterConnect = await page.locator(".edge").count();
+    assert.equal(edgeCountAfterConnect, edgeCountBeforeConnect + 1, "connecting should append a new child edge");
+    await page.keyboard.up("Shift");
+    await page.keyboard.up("Control");
+    console.log("ok Ctrl+Shift connects the active node and shows a blue connection ring");
+
+    await page.reload();
+    await page.waitForSelector(".node");
     await page.evaluate(() => {
       const app = document.querySelector("#app");
       app.style.setProperty("--inspector-width", "390px");

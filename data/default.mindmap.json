@@ -1,0 +1,171 @@
+{
+  "schema": "mindmap.product.v1",
+  "meta": {
+    "title": "Smind",
+    "createdAt": "2026-08-15T00:00:00.000Z",
+    "updatedAt": "2026-08-15T14:41:17.392Z"
+  },
+  "viewport": {
+    "scale": 1.865848204192076,
+    "tx": -470.6556908900943,
+    "ty": 870.3706103441939,
+    "inspectorWidth": 390
+  },
+  "nodes": [
+    {
+      "id": "node-1",
+      "parentId": null,
+      "x": 0,
+      "y": -182,
+      "w": 190,
+      "h": 92,
+      "text": "Smind",
+      "detail": "",
+      "color": "default",
+      "fontSize": 18,
+      "children": [
+        "node-2",
+        "node-3",
+        "node-4",
+        "node-5"
+      ]
+    },
+    {
+      "id": "node-2",
+      "parentId": "node-1",
+      "x": 280,
+      "y": -393,
+      "w": 170,
+      "h": 86,
+      "text": "鼠标模式",
+      "detail": "",
+      "color": "red",
+      "fontSize": 16,
+      "children": [
+        "node-11"
+      ]
+    },
+    {
+      "id": "node-3",
+      "parentId": "node-1",
+      "x": 280,
+      "y": -273,
+      "w": 170,
+      "h": 86,
+      "text": "编辑模式",
+      "detail": "",
+      "color": "blue",
+      "fontSize": 16,
+      "children": [
+        "node-11"
+      ]
+    },
+    {
+      "id": "node-4",
+      "parentId": "node-1",
+      "x": 280,
+      "y": -128,
+      "w": 170,
+      "h": 86,
+      "text": "节点编辑",
+      "detail": "",
+      "color": "green",
+      "fontSize": 16,
+      "children": [
+        "node-8"
+      ]
+    },
+    {
+      "id": "node-5",
+      "parentId": "node-1",
+      "x": 280,
+      "y": 35,
+      "w": 170,
+      "h": 86,
+      "text": "HTML 风格",
+      "detail": "",
+      "color": "cyan",
+      "fontSize": 16,
+      "children": []
+    },
+    {
+      "id": "node-8",
+      "parentId": "node-4",
+      "x": 560,
+      "y": -77,
+      "w": 166,
+      "h": 78,
+      "text": "Tab 子节点",
+      "detail": "",
+      "color": "default",
+      "fontSize": 15,
+      "children": []
+    },
+    {
+      "id": "node-9",
+      "parentId": "node-12",
+      "x": 1081.17743560631,
+      "y": -293.624643943425,
+      "w": 166,
+      "h": 42,
+      "text": "Enter 并列",
+      "detail": "",
+      "color": "default",
+      "fontSize": 15,
+      "children": []
+    },
+    {
+      "id": "node-11",
+      "parentId": "node-2",
+      "x": 560,
+      "y": -329,
+      "w": 166,
+      "h": 78,
+      "text": "框选",
+      "detail": "",
+      "color": "default",
+      "fontSize": 15,
+      "children": [
+        "node-12",
+        "node-13"
+      ]
+    },
+    {
+      "id": "node-12",
+      "parentId": "node-11",
+      "x": 840,
+      "y": -285,
+      "w": 166,
+      "h": 78,
+      "text": "批量格式",
+      "detail": "",
+      "color": "default",
+      "fontSize": 15,
+      "children": [
+        "node-9"
+      ]
+    },
+    {
+      "id": "node-13",
+      "parentId": "node-11",
+      "x": 840,
+      "y": -373,
+      "w": 136,
+      "h": 54,
+      "text": "新节点",
+      "detail": "",
+      "color": "default",
+      "fontSize": 16,
+      "children": [
+        "node-9"
+      ]
+    }
+  ],
+  "selection": {
+    "activeId": "",
+    "selectedIds": []
+  },
+  "counters": {
+    "nextId": 14
+  }
+}
