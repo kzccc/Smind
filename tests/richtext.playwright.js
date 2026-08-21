@@ -425,6 +425,27 @@ async function run() {
     assert.equal(numbered.html.includes("<br>"), true, "numbering should keep logical line breaks");
     console.log("ok line numbering prefixes selected logical lines");
 
+    assert.equal(await page.locator("#detailNormalize").count(), 1);
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      editor.innerHTML = "  第一段内容<br>&nbsp;&nbsp;第二段内容<br>    第三段内容";
+      editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+    });
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+    await page.locator("#detailNormalize").click();
+    const normalized = await page.locator("#nodeDetail").evaluate((editor) => ({
+      text: editor.innerText,
+      html: editor.innerHTML,
+    }));
+    assert.equal(normalized.text, "第一段内容\n第二段内容\n第三段内容");
+    assert.equal(normalized.html.includes("  "), false, "normalization should remove leading whitespace from selected logical lines");
+    console.log("ok规范 button removes leading whitespace from selected logical lines");
+
     await page.locator("#nodeDetail").evaluate((editor) => {
       editor.style.width = "";
       editor.innerHTML = "第一段  保留  空格<br><br>&nbsp;&nbsp;&nbsp;&nbsp;缩进行";

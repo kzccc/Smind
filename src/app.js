@@ -1166,6 +1166,19 @@ function numberedDetailSelectionText(text) {
     .join("\n");
 }
 
+function normalizedDetailSelectionText(text) {
+  const normalized = String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const endsWithBreak = normalized.endsWith("\n");
+  return normalized
+    .split("\n")
+    .map((line, index, lines) => {
+      const isTrailingEmptyLine = endsWithBreak && index === lines.length - 1 && line === "";
+      if (isTrailingEmptyLine) return line;
+      return line.replace(/^[\s\u00a0\u3000]+/, "");
+    })
+    .join("\n");
+}
+
 function logicalTextFromDetailRange(range) {
   const fragment = range.cloneContents();
   let text = "";
@@ -1206,6 +1219,17 @@ function applyDetailLineNumbers() {
   if (!numberedText) return false;
   pushDetailUndo();
   insertPlainTextAtDetailSelection(numberedText);
+  syncNodeDetailFromEditor();
+  return true;
+}
+
+function applyDetailNormalization() {
+  const range = getDetailSelectionRange();
+  if (!range) return false;
+  const normalizedText = normalizedDetailSelectionText(logicalTextFromDetailRange(range));
+  if (!normalizedText) return false;
+  pushDetailUndo();
+  insertPlainTextAtDetailSelection(normalizedText);
   syncNodeDetailFromEditor();
   return true;
 }
@@ -2373,6 +2397,8 @@ els.detailFormatBrush.addEventListener("mousedown", (event) => event.preventDefa
 els.detailFormatBrush.addEventListener("click", startDetailFormatBrush);
 els.detailLineNumbers.addEventListener("mousedown", (event) => event.preventDefault());
 els.detailLineNumbers.addEventListener("click", applyDetailLineNumbers);
+document.querySelector("#detailNormalize")?.addEventListener("mousedown", (event) => event.preventDefault());
+document.querySelector("#detailNormalize")?.addEventListener("click", applyDetailNormalization);
 
 els.canvasSwitcher?.addEventListener("pointerdown", (event) => {
   event.stopPropagation();
