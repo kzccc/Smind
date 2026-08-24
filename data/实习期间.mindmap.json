@@ -3,7 +3,7 @@
   "meta": {
     "title": "实习期间",
     "createdAt": "2026-08-16T06:19:08.240Z",
-    "updatedAt": "2026-08-16T06:22:41.611Z"
+    "updatedAt": "2026-08-24T02:35:08.629Z"
   },
   "activeCanvasId": "main",
   "canvases": {
@@ -11,9 +11,9 @@
       "id": "main",
       "title": "主画布",
       "viewport": {
-        "scale": 0.6663969201889218,
-        "tx": 270.0787982327802,
-        "ty": -115.68331461976231,
+        "scale": 0.6872086689714892,
+        "tx": 155.11206151753123,
+        "ty": 193.1157771844471,
         "inspectorWidth": 390
       },
       "nodes": [
@@ -35,8 +35,7 @@
             "node-5",
             "node-8",
             "node-19",
-            "node-26",
-            "node-29"
+            "node-26"
           ]
         },
         {
@@ -353,7 +352,7 @@
         {
           "id": "node-21",
           "parentId": "node-19",
-          "x": 560,
+          "x": 559.064322966434,
           "y": 1066,
           "w": 152,
           "h": 54,
@@ -472,21 +471,6 @@
           "color": "default",
           "fontSize": 15,
           "children": []
-        },
-        {
-          "id": "node-29",
-          "parentId": "node-1",
-          "x": 280,
-          "y": 1640,
-          "w": 138,
-          "h": 54,
-          "text": "分支主题 6",
-          "detail": "",
-          "detailHtml": "",
-          "detailLineGap": 0.5,
-          "color": "default",
-          "fontSize": 16,
-          "children": []
         }
       ],
       "selection": {
@@ -503,36 +487,217 @@
       "id": "summary",
       "title": "副画布",
       "viewport": {
-        "scale": 1,
-        "tx": 420,
-        "ty": 300,
-        "inspectorWidth": 390
+        "scale": 0.66064384,
+        "tx": 278.29864192,
+        "ty": 550.2348902399999,
+        "inspectorWidth": 531
       },
       "nodes": [
         {
           "id": "node-1",
           "parentId": null,
-          "x": 0,
-          "y": 0,
-          "w": 190,
-          "h": 92,
-          "text": "副画布",
+          "x": -291,
+          "y": 343,
+          "w": 136,
+          "h": 54,
+          "text": "计划与日报",
           "detail": "",
           "detailHtml": "",
           "detailLineGap": 0.5,
           "color": "default",
           "fontSize": 18,
+          "children": [
+            "node-2",
+            "node-3",
+            "node-8"
+          ]
+        },
+        {
+          "id": "node-2",
+          "parentId": "node-1",
+          "x": -10,
+          "y": 563,
+          "w": 136,
+          "h": 54,
+          "text": "日报",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-3",
+          "parentId": "node-1",
+          "x": -10,
+          "y": 387,
+          "w": 136,
+          "h": 54,
+          "text": "计划",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": [
+            "node-5"
+          ]
+        },
+        {
+          "id": "node-5",
+          "parentId": "node-3",
+          "x": 271,
+          "y": 387,
+          "w": 151.2,
+          "h": 54,
+          "text": "8.24-8.30",
+          "detail": "旧八股文: 6个八股按照思维导图背熟\n\n\nmysql\nredis\ngolang\n网络\n操作系统\nkafka\n\n\nleetcode:\n力扣hot100\n\n\ncodetop:\n20道\n\n\n我们自己的项目理解+包装:\n\n\n\n\n\n\n\n\n\n\n\n\n",
+          "detailHtml": "<span style=\"background-color: rgb(248, 249, 250); color: rgb(0, 0, 0); font-size: 15px;\">旧八股文: 6个八股按照思维导图背熟</span><br><br><pre class=\"detail-point-block\"><code>mysql\nredis\ngolang\n网络\n操作系统\nkafka</code></pre><br><br><span style=\"background-color: rgb(248, 249, 250); color: rgb(0, 0, 0); font-size: 15px;\">leetcode:</span><br><span style=\"background-color: rgb(248, 249, 250); color: rgb(0, 0, 0); font-size: 15px;\">力扣hot100</span><br><br><br><span style=\"color: rgb(0, 0, 0); font-size: 15px;\">codetop:</span><br><span style=\"color: rgb(0, 0, 0); font-size: 15px;\">20道</span><br><br><br><span style=\"color: rgb(0, 0, 0); font-size: 15px;\">我们自己的项目理解+包装:</span>\n\n<br><br><br><br><br><br><br><br><br><br><br><br>",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": [
+            "node-7"
+          ]
+        },
+        {
+          "id": "node-7",
+          "parentId": "node-5",
+          "x": 567.2,
+          "y": 387,
+          "w": 136,
+          "h": 54,
+          "text": "周一到周三",
+          "detail": "6块老八股\n\nmysql\nredis\ngolang\n网络\n操作系统\nkafka\n\nleetcode:\n力扣hot100\n\ncodetop:\n20道\n",
+          "detailHtml": "6块老八股\n<pre class=\"detail-point-block\"><code>mysql\nredis\ngolang\n网络\n操作系统\nkafka</code></pre><br>leetcode:<br>力扣hot100<br><br>codetop:<br>20道\n\n",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": [
+            "node-9",
+            "node-10",
+            "node-11"
+          ]
+        },
+        {
+          "id": "node-8",
+          "parentId": "node-1",
+          "x": -10,
+          "y": 123,
+          "w": 136,
+          "h": 54,
+          "text": "完成项",
+          "detail": "老八股:\nmysql\nredis\ngolang\n网络\n操作系统\nkafka力扣:hot100\n项目:Echochat\n项目:Helipot\n\n新八股:\nagentrag\ncodtop\naicoding\nLinux\nDocker+部署\nNginx\n微服务\npprof + Grafana + Prometheus\n如何写测试,单侧,集合测试\n代码调试\n手撕sql\n\n\n\n\n\n\n\n\n\n\n\n\n",
+          "detailHtml": "<pre class=\"detail-code-block\"><code>老八股:\nmysql\nredis\ngolang\n网络\n操作系统\nkafka力扣:hot100\n项目:Echochat项目:Helipot</code></pre><pre class=\"detail-code-block\"><code>新八股:agentrag\ncodtop\naicoding</code></pre><pre class=\"detail-code-block\"><code>Linux\nDocker+部署\nNginx</code></pre><pre class=\"detail-code-block\"><code>微服务</code></pre><pre class=\"detail-code-block\"><code>pprof + Grafana + Prometheus\n如何写测试,单侧,集合测试\n代码调试\n手撕sql</code></pre><br><br><br><br><br><br><br><br><br><br><br><br><br>",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": [
+            "node-12",
+            "node-13",
+            "node-14"
+          ]
+        },
+        {
+          "id": "node-9",
+          "parentId": "node-7",
+          "x": 848.2,
+          "y": 299,
+          "w": 136,
+          "h": 54,
+          "text": "8.24",
+          "detail": "计算机网络+kafka+操作系统\n\n\n",
+          "detailHtml": "计算机网络+kafka+操作系统<br><br><br><br>",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-10",
+          "parentId": "node-7",
+          "x": 848.2,
+          "y": 387,
+          "w": 136,
+          "h": 54,
+          "text": "8.25",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-11",
+          "parentId": "node-7",
+          "x": 848.2,
+          "y": 475,
+          "w": 136,
+          "h": 54,
+          "text": "8.26",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-12",
+          "parentId": "node-8",
+          "x": 271,
+          "y": 35,
+          "w": 136,
+          "h": 54,
+          "text": "老八股",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-13",
+          "parentId": "node-8",
+          "x": 271,
+          "y": 123,
+          "w": 136,
+          "h": 54,
+          "text": "项目",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-14",
+          "parentId": "node-8",
+          "x": 271,
+          "y": 211,
+          "w": 136,
+          "h": 54,
+          "text": "新八股+工具",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
           "children": []
         }
       ],
       "selection": {
-        "activeId": "node-1",
+        "activeId": "node-8",
         "selectedIds": [
-          "node-1"
+          "node-8"
         ]
       },
       "counters": {
-        "nextId": 2
+        "nextId": 15
       }
     }
   }

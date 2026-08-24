@@ -446,6 +446,163 @@ async function run() {
     assert.equal(normalized.html.includes("  "), false, "normalization should remove leading whitespace from selected logical lines");
     console.log("ok规范 button removes leading whitespace from selected logical lines");
 
+    assert.equal(await page.locator("#detailCode").count(), 1);
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      editor.innerHTML = "const value = 8;<br>if (value &gt; 2) {<br>  return value;<br>}";
+      editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+    });
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+    await page.locator("#detailCode").click();
+    const codeBlock = await page.locator("#nodeDetail").evaluate((editor) => {
+      const block = editor.querySelector("pre.detail-code-block");
+      const code = block?.querySelector("code");
+      const style = block ? getComputedStyle(block) : null;
+      return {
+        count: editor.querySelectorAll("pre.detail-code-block").length,
+        text: code?.textContent || "",
+        background: style?.backgroundColor || "",
+        font: style?.fontFamily || "",
+      };
+    });
+    assert.equal(codeBlock.count, 1);
+    assert.equal(codeBlock.text, "const value = 8;\nif (value > 2) {\n  return value;\n}");
+    assert.equal(codeBlock.background, "rgb(255, 253, 240)");
+    assert.equal(codeBlock.font.includes("Consolas"), true);
+    const codeSpacer = await page.locator("#nodeDetail").evaluate((editor) => {
+      const block = editor.querySelector("pre.detail-code-block");
+      let count = 0;
+      let next = block?.nextSibling;
+      while (next?.nodeType === Node.ELEMENT_NODE && next.tagName.toLowerCase() === "br") {
+        count += 1;
+        next = next.nextSibling;
+      }
+      const code = block?.querySelector("code");
+      const textNode = code?.firstChild;
+      const range = document.createRange();
+      range.setStart(textNode, textNode.textContent.length);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return { count, before: block?.previousSibling?.nodeName || "" };
+    });
+    assert.equal(codeSpacer.count, 3, "blocks should reserve three editable spacer lines");
+    await page.keyboard.press("ArrowDown");
+    assert.equal(await page.evaluate(() => {
+      const selection = window.getSelection();
+      return selection?.anchorNode?.parentElement?.closest?.("pre.detail-code-block") || null;
+    }), null, "ArrowDown should leave the code block from its last line");
+    await page.locator('[data-id="node-2"]').click();
+    await page.locator('[data-id="node-1"]').click();
+    assert.equal(
+      await page.locator("#nodeDetail pre.detail-code-block").count(),
+      1,
+      "code block should survive switching nodes",
+    );
+    console.log("ok代码 button converts selected logical lines into a styled code block");
+
+    await page.locator("#nodeDetail pre.detail-code-block").click();
+    await page.keyboard.press("ControlOrMeta+C");
+    await page.locator('[data-id="node-2"]').click();
+    await page.locator("#nodeDetail").click();
+    await page.keyboard.press("ControlOrMeta+V");
+    const pastedCodeBlock = await page.locator("#nodeDetail").evaluate((editor) => ({
+      count: editor.querySelectorAll("pre.detail-code-block").length,
+      text: editor.querySelector("pre.detail-code-block code")?.textContent || "",
+    }));
+    assert.equal(pastedCodeBlock.count, 1, "copied code block should paste as a code block");
+    assert.equal(pastedCodeBlock.text, "const value = 8;\nif (value > 2) {\n  return value;\n}");
+    console.log("ok代码块 supports copying and pasting between nodes");
+    assert.equal(await page.locator("#detailPoint").count(), 1);
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      editor.innerHTML = "第一要点<br>第二要点";
+      editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+    });
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+    await page.locator("#detailPoint").click();
+    const pointBlock = await page.locator("#nodeDetail").evaluate((editor) => {
+      const block = editor.querySelector("pre.detail-point-block");
+      return {
+        count: editor.querySelectorAll("pre.detail-point-block").length,
+        text: block?.querySelector("code")?.textContent || "",
+        background: block ? getComputedStyle(block).backgroundColor : "",
+      };
+    });
+    assert.equal(pointBlock.count, 1);
+    assert.equal(pointBlock.text, "第一要点\n第二要点");
+    assert.equal(pointBlock.background, "rgb(238, 249, 255)");
+    console.log("ok要点 button converts selected text into a light-blue point block");
+    await page.locator("#nodeDetail pre.detail-point-block").click();
+    await page.keyboard.press("ControlOrMeta+C");
+    await page.locator('[data-id="node-2"]').click();
+    await page.locator("#nodeDetail").click();
+    await page.keyboard.press("ControlOrMeta+V");
+    const pastedPointBlock = await page.locator("#nodeDetail").evaluate((editor) => ({
+      count: editor.querySelectorAll("pre.detail-point-block").length,
+      texts: [...editor.querySelectorAll("pre.detail-point-block code")].map((code) => code.textContent || ""),
+    }));
+    assert.equal(pastedPointBlock.count >= 1, true, "copied point block should paste as a point block");
+    assert.equal(pastedPointBlock.texts.includes("第一要点\n第二要点"), true);
+    console.log("ok要点块 supports copying and pasting between nodes");
+    await page.locator('[data-id="node-1"]').click();
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      editor.innerHTML = '文字前<pre class="detail-code-block"><code>混合代码</code></pre>文字后';
+      editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+    await page.keyboard.press("ControlOrMeta+C");
+    await page.locator('[data-id="node-2"]').click();
+    await page.locator("#nodeDetail").click();
+    await page.keyboard.press("ControlOrMeta+V");
+    const mixedCodePaste = await page.locator("#nodeDetail").evaluate((editor) => ({
+      text: editor.innerText,
+      blocks: editor.querySelectorAll("pre.detail-code-block").length,
+    }));
+    assert.equal(mixedCodePaste.text.includes("文字前"), true);
+    assert.equal(mixedCodePaste.text.includes("混合代码"), true);
+    assert.equal(mixedCodePaste.text.includes("文字后"), true);
+    assert.equal(mixedCodePaste.blocks >= 1, true);
+    console.log("ok mixed text and code block copy/paste keeps all content");
+    await page.locator('[data-id="node-1"]').click();
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      editor.innerHTML = '图片前<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=" width="48" height="48">图片后';
+      editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+    await page.keyboard.press("ControlOrMeta+C");
+    await page.locator('[data-id="node-2"]').click();
+    await page.locator("#nodeDetail").click();
+    await page.keyboard.press("ControlOrMeta+V");
+    const mixedImagePaste = await page.locator("#nodeDetail").evaluate((editor) => ({
+      text: editor.innerText,
+      images: editor.querySelectorAll("img").length,
+    }));
+    assert.equal(mixedImagePaste.text.includes("图片前"), true);
+    assert.equal(mixedImagePaste.text.includes("图片后"), true);
+    assert.equal(mixedImagePaste.images >= 1, true);
+    console.log("ok mixed text and image copy/paste keeps all content");
+    await page.locator('[data-id="node-1"]').click();
+
     await page.locator("#nodeDetail").evaluate((editor) => {
       editor.style.width = "";
       editor.innerHTML = "第一段  保留  空格<br><br>&nbsp;&nbsp;&nbsp;&nbsp;缩进行";

@@ -618,6 +618,58 @@ body.inspector-resizing .inspector-resizer::after {
   outline-offset: 2px;
 }
 
+.detail-input pre.detail-code-block {
+  box-sizing: border-box;
+  margin: 10px 0;
+  padding: 11px 14px 11px 16px;
+  border: 1px solid #e4c34f;
+  border-left: 4px solid #f0c419;
+  border-radius: 6px;
+  background: #fffdf0;
+  color: #302d22;
+  box-shadow: 0 2px 7px rgba(136, 109, 20, .12);
+  font-family: Consolas, "SFMono-Regular", "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 2;
+}
+
+.detail-input pre.detail-code-block code {
+  display: block;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  white-space: inherit;
+}
+
+.detail-input pre.detail-point-block {
+  box-sizing: border-box;
+  margin: 10px 0;
+  padding: 11px 14px 11px 16px;
+  border: 1px solid #9bcfe8;
+  border-left: 4px solid #55a9d2;
+  border-radius: 6px;
+  background: #eef9ff;
+  color: #173b4d;
+  box-shadow: 0 2px 7px rgba(39, 126, 166, .12);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 2;
+}
+
+.detail-input pre.detail-point-block code {
+  display: block;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  white-space: inherit;
+}
+
 #detailImageResizeHandle {
   position: absolute;
   display: none;

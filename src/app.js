@@ -81,6 +81,10 @@ const state = {
   detailImage: null,
   detailImageResize: null,
   detailImageClipboard: null,
+  detailCodeClipboard: null,
+  detailCodePlainClipboard: "",
+  detailPointClipboard: null,
+  detailPointPlainClipboard: "",
 };
 
 const nodes = [
@@ -224,10 +228,14 @@ const els = {
   detailFontValue: document.querySelector("#detailFontValue"),
   detailFormatBrush: document.querySelector("#detailFormatBrush"),
   detailLineNumbers: document.querySelector("#detailLineNumbers"),
+  detailCode: document.querySelector("#detailCode"),
+  detailPoint: document.querySelector("#detailPoint"),
   inspectorResizer: document.querySelector("#inspectorResizer"),
   detailImageResizeHandle: document.querySelector("#detailImageResizeHandle"),
   inspectorToggle: document.querySelector("#inspectorToggle"),
 };
+
+const DETAIL_BLOCK_SPACER_LINES = 3;
 
 const renderCache = {
   nodes: new Map(),
@@ -405,6 +413,20 @@ function sanitizeDetailHtml(html) {
       appendBreak();
       return;
     }
+    if (tag === "pre") {
+      const codeBlock = document.createElement("pre");
+      codeBlock.className = source.classList.contains("detail-point-block")
+        ? "detail-point-block"
+        : "detail-code-block";
+      const code = document.createElement("code");
+      code.textContent = (source.textContent || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      codeBlock.append(code);
+      output.append(codeBlock);
+      for (let index = 0; index < DETAIL_BLOCK_SPACER_LINES; index += 1) {
+        output.append(document.createElement("br"));
+      }
+      return;
+    }
     if (tag === "img") {
       const src = source.getAttribute("src") || "";
       if (!isSafeDetailImageSource(src)) return;
@@ -434,6 +456,20 @@ function sanitizeDetailHtml(html) {
   }
 
   [...template.content.childNodes].forEach((child) => appendClean(child));
+  [...output.querySelectorAll("pre.detail-code-block, pre.detail-point-block")].forEach((block) => {
+    let next = block.nextSibling;
+    while (next && next.nodeType === Node.ELEMENT_NODE && next.tagName.toLowerCase() === "br") {
+      const remove = next;
+      next = next.nextSibling;
+      remove.remove();
+    }
+    let spacer = block;
+    for (let index = 0; index < DETAIL_BLOCK_SPACER_LINES; index += 1) {
+      const lineBreak = document.createElement("br");
+      spacer.after(lineBreak);
+      spacer = lineBreak;
+    }
+  });
   return output.innerHTML;
 }
 
@@ -622,6 +658,10 @@ function resetCanvasTransientState() {
   state.detailUndoStacks = new Map();
   state.detailFormatBrush = null;
   state.detailImageClipboard = null;
+  state.detailCodeClipboard = null;
+  state.detailCodePlainClipboard = "";
+  state.detailPointClipboard = null;
+  state.detailPointPlainClipboard = "";
   clearDetailImageSelection();
 }
 
@@ -1199,6 +1239,11 @@ function logicalTextFromDetailRange(range) {
       appendBreak();
       return;
     }
+    if (tag === "pre") {
+      if (text && !text.endsWith("\n")) appendBreak();
+      text += (node.textContent || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      return;
+    }
     if (tag === "div" || tag === "p") {
       if (text && !text.endsWith("\n")) appendBreak();
       [...node.childNodes].forEach(appendNode);
@@ -1232,6 +1277,120 @@ function applyDetailNormalization() {
   insertPlainTextAtDetailSelection(normalizedText);
   syncNodeDetailFromEditor();
   return true;
+}
+
+function applyDetailBlock(blockClass) {
+  const range = getDetailSelectionRange();
+  if (!range) return false;
+  const blockText = logicalTextFromDetailRange(range).replace(/\n$/, "");
+  if (!blockText) return false;
+  pushDetailUndo();
+
+  const codeBlock = document.createElement("pre");
+  codeBlock.className = blockClass;
+  const code = document.createElement("code");
+  code.textContent = blockText;
+  codeBlock.append(code);
+  range.deleteContents();
+  range.insertNode(codeBlock);
+  let spacer = codeBlock;
+  for (let index = 0; index < DETAIL_BLOCK_SPACER_LINES; index += 1) {
+    const lineBreak = document.createElement("br");
+    spacer.after(lineBreak);
+    spacer = lineBreak;
+  }
+  collapseDetailSelectionAfter(codeBlock);
+  syncNodeDetailFromEditor();
+  return true;
+}
+
+function detailBlockForCaret() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return null;
+  const range = selection.getRangeAt(0);
+  const container = range.startContainer.nodeType === Node.ELEMENT_NODE
+    ? range.startContainer
+    : range.startContainer.parentElement;
+  return container?.closest?.("pre.detail-code-block, pre.detail-point-block") || null;
+}
+
+function setCaretAtDetailBlockSpacer(block, direction) {
+  const parent = block?.parentNode;
+  if (!parent) return false;
+  const siblings = [...parent.childNodes];
+  const blockIndex = siblings.indexOf(block);
+  if (blockIndex < 0) return false;
+  const step = direction === "up" ? -1 : 1;
+  let index = blockIndex + step;
+  let spacer = null;
+  while (index >= 0 && index < siblings.length) {
+    const candidate = siblings[index];
+    if (candidate.nodeType === Node.ELEMENT_NODE && candidate.tagName.toLowerCase() === "br") {
+      spacer = candidate;
+      break;
+    }
+    if (candidate.nodeType === Node.TEXT_NODE && candidate.textContent) break;
+    if (candidate.nodeType === Node.ELEMENT_NODE && !candidate.matches("br")) break;
+    index += step;
+  }
+  if (!spacer) {
+    const firstSpacer = document.createElement("br");
+    spacer = firstSpacer;
+    if (direction === "up") {
+      parent.insertBefore(firstSpacer, block);
+      let previous = firstSpacer;
+      for (let line = 1; line < DETAIL_BLOCK_SPACER_LINES; line += 1) {
+        const nextSpacer = document.createElement("br");
+        previous.before(nextSpacer);
+        previous = nextSpacer;
+      }
+    } else {
+      parent.insertBefore(firstSpacer, block.nextSibling);
+      let previous = firstSpacer;
+      for (let line = 1; line < DETAIL_BLOCK_SPACER_LINES; line += 1) {
+        const nextSpacer = document.createElement("br");
+        previous.after(nextSpacer);
+        previous = nextSpacer;
+      }
+    }
+  }
+  const range = document.createRange();
+  if (direction === "up") {
+    range.setStartBefore(spacer);
+  } else {
+    range.setStartAfter(spacer);
+  }
+  range.collapse(true);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  return true;
+}
+
+function handleDetailBlockArrowNavigation(event) {
+  if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return false;
+  const block = detailBlockForCaret();
+  if (!block) return false;
+  const text = block.textContent || "";
+  const range = window.getSelection().getRangeAt(0);
+  const offset = range.startContainer.nodeType === Node.TEXT_NODE
+    ? range.startOffset
+    : range.startOffset;
+  const firstLine = !text.slice(0, offset).includes("\n");
+  const lastLine = !text.slice(offset).includes("\n");
+  if ((event.key === "ArrowUp" && firstLine) || (event.key === "ArrowDown" && lastLine)) {
+    event.preventDefault();
+    return setCaretAtDetailBlockSpacer(block, event.key === "ArrowUp" ? "up" : "down");
+  }
+  return false;
+}
+
+function applyDetailCodeBlock() {
+  return applyDetailBlock("detail-code-block");
+}
+
+function applyDetailPointBlock() {
+  return applyDetailBlock("detail-point-block");
 }
 
 function insertPlainTextAtDetailSelection(text) {
@@ -1309,6 +1468,42 @@ function safeImageFromClipboardHtml(event) {
   };
 }
 
+function safeDetailBlockFromClipboardHtml(event) {
+  const html = event.clipboardData?.getData("text/html");
+  if (!html) return "";
+  const holder = document.createElement("div");
+  holder.innerHTML = html;
+  if (!holder.querySelector("pre")) return "";
+  return sanitizeDetailHtml(html);
+}
+
+function insertSanitizedDetailHtmlAtSelection(html) {
+  const selection = window.getSelection();
+  const range = getDetailRange() || document.createRange();
+  if (!selection.rangeCount || !getDetailRange()) {
+    range.selectNodeContents(els.nodeDetail);
+    range.collapse(false);
+  }
+  range.deleteContents();
+
+  const holder = document.createElement("div");
+  holder.innerHTML = sanitizeDetailHtml(html);
+  const fragment = document.createDocumentFragment();
+  let lastNode = null;
+  [...holder.childNodes].forEach((node) => {
+    lastNode = fragment.appendChild(node);
+  });
+  range.insertNode(fragment);
+
+  selection.removeAllRanges();
+  if (lastNode) {
+    const nextRange = document.createRange();
+    nextRange.setStartAfter(lastNode);
+    nextRange.collapse(true);
+    selection.addRange(nextRange);
+  }
+}
+
 function pasteIntoDetailEditor(event) {
   const imageItem = [...(event.clipboardData?.items || [])]
     .find((item) => item.kind === "file" && item.type.startsWith("image/"));
@@ -1328,20 +1523,31 @@ function pasteIntoDetailEditor(event) {
     return;
   }
 
-  const clipboardImage = safeImageFromClipboardHtml(event);
-  if (clipboardImage) {
+  const clipboardHtml = event.clipboardData?.getData("text/html") || "";
+  const sanitizedClipboardHtml = clipboardHtml ? sanitizeDetailHtml(clipboardHtml) : "";
+  if (sanitizedClipboardHtml && (clipboardHtml.includes("<img") || clipboardHtml.includes("<pre"))) {
     event.preventDefault();
     pushDetailUndo();
-    insertImageAtDetailSelection(
-      clipboardImage.src,
-      getDetailRange()?.cloneRange() || null,
-      clipboardImage,
-    );
+    insertSanitizedDetailHtmlAtSelection(sanitizedClipboardHtml);
     syncNodeDetailFromEditor();
     return;
   }
 
   const plainClipboardText = event.clipboardData?.getData("text/plain") || "";
+  const internalBlockClipboard = !event.clipboardData?.getData("text/html")
+    && (plainClipboardText === state.detailCodePlainClipboard
+      ? state.detailCodeClipboard
+      : plainClipboardText === state.detailPointPlainClipboard
+        ? state.detailPointClipboard
+        : null);
+  if (internalBlockClipboard) {
+    event.preventDefault();
+    pushDetailUndo();
+    insertSanitizedDetailHtmlAtSelection(internalBlockClipboard);
+    syncNodeDetailFromEditor();
+    return;
+  }
+
   const clipboardTypes = [...(event.clipboardData?.types || [])];
   if (
     state.detailImageClipboard
@@ -1350,20 +1556,8 @@ function pasteIntoDetailEditor(event) {
   ) {
     event.preventDefault();
     pushDetailUndo();
-    const holder = document.createElement("div");
-    holder.innerHTML = state.detailImageClipboard;
-    const image = holder.querySelector("img");
-    if (image) {
-      insertImageAtDetailSelection(
-        image.getAttribute("src"),
-        getDetailRange()?.cloneRange() || null,
-        {
-          width: image.getAttribute("width"),
-          height: image.getAttribute("height"),
-        },
-      );
-      syncNodeDetailFromEditor();
-    }
+    insertSanitizedDetailHtmlAtSelection(state.detailImageClipboard);
+    syncNodeDetailFromEditor();
     return;
   }
 
@@ -1445,6 +1639,17 @@ function selectDetailImage(image) {
 function copySelectedDetailImage(event = null) {
   const image = state.detailImage;
   if (!image || !image.isConnected) return false;
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return false;
+  const range = selection.getRangeAt(0);
+  const parent = image.parentNode;
+  const selectsOnlyImage = range.collapsed
+    ? image.contains(range.startContainer)
+    : (range.startContainer === parent
+      && range.endContainer === parent
+      && range.endOffset === range.startOffset + 1
+      && parent.childNodes[range.startOffset] === image);
+  if (!selectsOnlyImage) return false;
   const html = sanitizeDetailHtml(image.outerHTML);
   if (!html) return false;
   state.detailImageClipboard = html;
@@ -1455,13 +1660,77 @@ function copySelectedDetailImage(event = null) {
     return true;
   }
 
+  const previousRanges = [];
+  for (let index = 0; index < selection.rangeCount; index += 1) {
+    previousRanges.push(selection.getRangeAt(index).cloneRange());
+  }
+  const copyRange = document.createRange();
+  copyRange.selectNode(image);
+  selection.removeAllRanges();
+  selection.addRange(copyRange);
+  try {
+    document.execCommand("copy");
+  } catch (error) {
+    // The internal clipboard remains available when browser clipboard access is blocked.
+  }
+  selection.removeAllRanges();
+  previousRanges.forEach((previousRange) => selection.addRange(previousRange));
+  return true;
+}
+
+function detailBlockFromSelection() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  if (!els.nodeDetail.contains(range.commonAncestorContainer)) return null;
+  const block = [...els.nodeDetail.querySelectorAll("pre.detail-code-block, pre.detail-point-block")]
+    .find((block) => {
+      try {
+        return range.intersectsNode(block);
+      } catch (error) {
+        return false;
+      }
+    });
+  if (!block) return null;
+  if (range.collapsed) return block.contains(range.startContainer) ? block : null;
+  if (block.contains(range.startContainer) && block.contains(range.endContainer)) return block;
+  const parent = block.parentNode;
+  if (
+    range.startContainer === parent
+    && range.endContainer === parent
+    && range.endOffset === range.startOffset + 1
+    && parent.childNodes[range.startOffset] === block
+  ) return block;
+  return null;
+}
+
+function copySelectedDetailBlock(event = null) {
+  const block = detailBlockFromSelection();
+  if (!block) return false;
+  const html = sanitizeDetailHtml(block.outerHTML);
+  if (!html) return false;
+  const plain = block.textContent || "";
+  if (block.classList.contains("detail-point-block")) {
+    state.detailPointClipboard = html;
+    state.detailPointPlainClipboard = plain;
+  } else {
+    state.detailCodeClipboard = html;
+    state.detailCodePlainClipboard = plain;
+  }
+  if (event?.clipboardData) {
+    event.preventDefault();
+    event.clipboardData.setData("text/html", html);
+    event.clipboardData.setData("text/plain", plain);
+    return true;
+  }
+
   const selection = window.getSelection();
   const previousRanges = [];
   for (let index = 0; index < selection.rangeCount; index += 1) {
     previousRanges.push(selection.getRangeAt(index).cloneRange());
   }
   const range = document.createRange();
-  range.selectNode(image);
+  range.selectNode(block);
   selection.removeAllRanges();
   selection.addRange(range);
   try {
@@ -2230,6 +2499,7 @@ function beginActiveTitleEdit() {
 }
 
 function onKeyDown(event) {
+  if (isDetailEditorActive() && handleDetailBlockArrowNavigation(event)) return;
   if (event.key === "Control" || event.metaKey) {
     setMode("select");
   }
@@ -2240,10 +2510,18 @@ function onKeyDown(event) {
     return;
   }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c" && state.detailImage && isDetailEditorActive()) {
-    event.preventDefault();
-    event.stopPropagation();
-    copySelectedDetailImage();
-    return;
+    if (copySelectedDetailImage()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c" && isDetailEditorActive()) {
+    if (copySelectedDetailBlock()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
   }
   if (event.key === "Escape" && state.detailFormatBrush) {
     event.preventDefault();
@@ -2399,6 +2677,10 @@ els.detailLineNumbers.addEventListener("mousedown", (event) => event.preventDefa
 els.detailLineNumbers.addEventListener("click", applyDetailLineNumbers);
 document.querySelector("#detailNormalize")?.addEventListener("mousedown", (event) => event.preventDefault());
 document.querySelector("#detailNormalize")?.addEventListener("click", applyDetailNormalization);
+els.detailCode?.addEventListener("mousedown", (event) => event.preventDefault());
+els.detailCode?.addEventListener("click", applyDetailCodeBlock);
+els.detailPoint?.addEventListener("mousedown", (event) => event.preventDefault());
+els.detailPoint?.addEventListener("click", applyDetailPointBlock);
 
 els.canvasSwitcher?.addEventListener("pointerdown", (event) => {
   event.stopPropagation();
@@ -2428,7 +2710,8 @@ els.inspectorResizer.addEventListener("pointerdown", onInspectorResizeStart);
 els.shell.addEventListener("wheel", onWheel, { passive: false });
 document.addEventListener("copy", (event) => {
   if (event.target === els.nodeDetail || els.nodeDetail.contains(event.target)) {
-    copySelectedDetailImage(event);
+    if (copySelectedDetailImage(event)) return;
+    copySelectedDetailBlock(event);
   }
 }, true);
 window.addEventListener("keydown", onKeyDown);
