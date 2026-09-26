@@ -1,0 +1,30 @@
+2026/09/08-20:38:13.655 2e40 Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_scnapmt886j4.feishu.cn_0.indexeddb.leveldb/MANIFEST-000001
+2026/09/08-20:38:13.656 2e40 Recovering log #24
+2026/09/08-20:38:13.656 2e40 Reusing old log C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_scnapmt886j4.feishu.cn_0.indexeddb.leveldb/000024.log 
+2026/09/08-20:40:56.445 2e40 Level-0 table #29: started
+2026/09/08-20:40:56.469 2e40 Level-0 table #29: 1706955 bytes OK
+2026/09/08-20:40:56.472 2e40 Delete type=0 #24
+2026/09/08-20:41:19.242 2d8c Compacting 1@1 + 1@2 files
+2026/09/08-20:41:19.264 2d8c Generated table #30@1: 2814 keys, 399044 bytes
+2026/09/08-20:41:19.264 2d8c Compacted 1@1 + 1@2 files => 399044 bytes
+2026/09/08-20:41:19.266 2d8c compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/09/08-20:41:19.267 2d8c Delete type=2 #26
+2026/09/08-20:41:19.267 2d8c Delete type=2 #29
+2026/09/08-20:44:04.003 3834 Level-0 table #32: started
+2026/09/08-20:44:04.033 3834 Level-0 table #32: 1249910 bytes OK
+2026/09/08-20:44:04.035 3834 Delete type=0 #28
+2026/09/08-20:44:10.238 3834 Compacting 1@1 + 1@2 files
+2026/09/08-20:44:10.253 3834 Generated table #33@1: 3260 keys, 482140 bytes
+2026/09/08-20:44:10.253 3834 Compacted 1@1 + 1@2 files => 482140 bytes
+2026/09/08-20:44:10.254 3834 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/09/08-20:44:10.254 3834 Delete type=2 #30
+2026/09/08-20:44:10.255 3834 Delete type=2 #32
+2026/09/08-20:45:47.489 2e40 Level-0 table #35: started
+2026/09/08-20:45:47.509 2e40 Level-0 table #35: 1720900 bytes OK
+2026/09/08-20:45:47.511 2e40 Delete type=0 #31
+2026/09/08-20:58:55.999 2e40 Compacting 1@1 + 1@2 files
+2026/09/08-20:58:56.017 2e40 Generated table #36@1: 3968 keys, 581729 bytes
+2026/09/08-20:58:56.017 2e40 Compacted 1@1 + 1@2 files => 581729 bytes
+2026/09/08-20:58:56.018 2e40 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/09/08-20:58:56.018 2e40 Delete type=2 #33
+2026/09/08-20:58:56.018 2e40 Delete type=2 #35

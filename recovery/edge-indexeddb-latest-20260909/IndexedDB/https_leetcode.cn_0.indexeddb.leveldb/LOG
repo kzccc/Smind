@@ -1,0 +1,13 @@
+2026/09/09-12:34:50.701 5018 Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_leetcode.cn_0.indexeddb.leveldb/MANIFEST-000001
+2026/09/09-12:34:50.702 5018 Recovering log #89
+2026/09/09-12:34:50.703 5018 Reusing old log C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_leetcode.cn_0.indexeddb.leveldb/000089.log 
+2026/09/09-12:34:53.344 5008 Level-0 table #93: started
+2026/09/09-12:34:53.346 5008 Level-0 table #93: 1039 bytes OK
+2026/09/09-12:34:53.347 5008 Delete type=0 #89
+2026/09/09-12:34:53.349 5008 Manual compaction at level-0 from '\x00\x19\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1a\x00\x00\x00' @ 0 : 0; will stop at '\x00\x19\x00\x00\xc8\x04\x00d\x00a\x00t\x00a' @ 1785 : 1
+2026/09/09-12:34:53.349 5008 Compacting 1@0 + 1@1 files
+2026/09/09-12:34:53.351 5008 Generated table #94@0: 20 keys, 617 bytes
+2026/09/09-12:34:53.351 5008 Compacted 1@0 + 1@1 files => 617 bytes
+2026/09/09-12:34:53.352 5008 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/09/09-12:34:53.353 5008 Delete type=2 #93
+2026/09/09-12:34:53.354 5008 Manual compaction at level-0 from '\x00\x19\x00\x00\xc8\x04\x00d\x00a\x00t\x00a' @ 1785 : 1 .. '\x00\x1a\x00\x00\x00' @ 0 : 0; will stop at (end)

@@ -1,0 +1,7 @@
+2026/09/08-11:59:08.579 2e40 Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_leetcode.cn_0.indexeddb.leveldb/MANIFEST-000001
+2026/09/08-11:59:08.579 2e40 Recovering log #84
+2026/09/08-11:59:08.580 2e40 Reusing old log C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_leetcode.cn_0.indexeddb.leveldb/000084.log 
+2026/09/08-11:59:11.983 948 Level-0 table #90: started
+2026/09/08-11:59:12.333 948 Level-0 table #90: 1043 bytes OK
+2026/09/08-11:59:12.471 948 Delete type=0 #84
+2026/09/08-11:59:13.016 56d8 Manual compaction at level-0 from '\x00\x18\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x19\x00\x00\x00' @ 0 : 0; will stop at (end)

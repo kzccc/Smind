@@ -1,0 +1,15 @@
+2026/08/31-10:56:35.000 743c Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_codeup.aliyun.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/08/31-10:56:35.001 743c Recovering log #4
+2026/08/31-10:56:35.001 743c Reusing old log C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_codeup.aliyun.com_0.indexeddb.leveldb/000004.log 
+2026/09/01-11:07:55.509 1db4 Level-0 table #8: started
+2026/09/01-11:07:55.513 1db4 Level-0 table #8: 5284 bytes OK
+2026/09/01-11:07:55.517 1db4 Delete type=0 #4
+2026/09/01-11:07:55.519 1db4 Manual compaction at level-0 from (begin) .. (end); will stop at (end)
+2026/09/01-11:07:55.519 1db4 Manual compaction at level-1 from (begin) .. (end); will stop at '\x00\x01\x01\x02\x01\x16\x00a\x00e\x00s\x00-\x00p\x00l\x00u\x00g\x00i\x00n\x00-\x00s\x00u\x00r\x00v\x00e\x00y\x00-\x00t\x00e\x00s\x00t' @ 51 : 1
+2026/09/01-11:07:55.520 1db4 Compacting 1@1 + 1@2 files
+2026/09/01-11:07:55.523 1db4 Generated table #9@1: 29 keys, 827 bytes
+2026/09/01-11:07:55.523 1db4 Compacted 1@1 + 1@2 files => 827 bytes
+2026/09/01-11:07:55.525 1db4 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/09/01-11:07:55.525 1db4 Delete type=2 #5
+2026/09/01-11:07:55.525 1db4 Delete type=2 #8
+2026/09/01-11:07:55.526 1db4 Manual compaction at level-1 from '\x00\x01\x01\x02\x01\x16\x00a\x00e\x00s\x00-\x00p\x00l\x00u\x00g\x00i\x00n\x00-\x00s\x00u\x00r\x00v\x00e\x00y\x00-\x00t\x00e\x00s\x00t' @ 51 : 1 .. (end); will stop at (end)

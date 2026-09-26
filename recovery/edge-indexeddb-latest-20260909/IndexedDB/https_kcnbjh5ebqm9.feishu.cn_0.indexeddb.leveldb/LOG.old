@@ -1,0 +1,41 @@
+2026/08/24-15:46:37.931 2d7c Creating DB C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_kcnbjh5ebqm9.feishu.cn_0.indexeddb.leveldb since it was missing.
+2026/08/24-15:46:37.935 2d7c Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_kcnbjh5ebqm9.feishu.cn_0.indexeddb.leveldb/MANIFEST-000001
+2026/08/24-15:52:29.722 2d7c Level-0 table #5: started
+2026/08/24-15:52:29.763 2d7c Level-0 table #5: 2352914 bytes OK
+2026/08/24-15:52:29.765 2d7c Delete type=0 #3
+2026/08/24-16:10:30.354 2d7c Level-0 table #7: started
+2026/08/24-16:10:30.388 2d7c Level-0 table #7: 1624128 bytes OK
+2026/08/24-16:10:30.390 2d7c Delete type=0 #4
+2026/08/24-16:11:02.869 2d7c Compacting 1@1 + 1@2 files
+2026/08/24-16:11:02.879 2d7c Generated table #8@1: 1382 keys, 172149 bytes
+2026/08/24-16:11:02.879 2d7c Compacted 1@1 + 1@2 files => 172149 bytes
+2026/08/24-16:11:02.880 2d7c compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/08/24-16:11:02.880 2d7c Delete type=2 #5
+2026/08/24-16:11:02.880 2d7c Delete type=2 #7
+2026/08/24-18:54:47.013 2d7c Level-0 table #10: started
+2026/08/24-18:54:47.069 2d7c Level-0 table #10: 1215844 bytes OK
+2026/08/24-18:54:47.070 2d7c Delete type=0 #6
+2026/08/24-21:03:24.175 2d7c Compacting 1@1 + 1@2 files
+2026/08/24-21:03:24.181 2d7c Level-0 table #13: started
+2026/08/24-21:03:24.191 2d7c Level-0 table #13: 92575 bytes OK
+2026/08/24-21:03:24.196 2d7c Delete type=0 #9
+2026/08/24-21:03:24.221 2d7c Generated table #11@1: 2096 keys, 291786 bytes
+2026/08/24-21:03:24.221 2d7c Compacted 1@1 + 1@2 files => 291786 bytes
+2026/08/24-21:03:24.222 2d7c compacted to: files[ 1 0 1 0 0 0 0 ]
+2026/08/24-21:03:24.223 2d7c Delete type=2 #8
+2026/08/24-21:03:24.223 2d7c Delete type=2 #10
+2026/08/24-21:03:24.224 7220 Manual compaction at level-0 from (begin) .. (end); will stop at '\x00\x08\x01\x02\x01\x0c\x00v\x00c\x00_\x00d\x00e\x00v\x00i\x00c\x00e\x00_\x00i\x00d' @ 15036 : 1
+2026/08/24-21:03:24.224 7220 Compacting 1@0 + 0@1 files
+2026/08/24-21:03:24.227 7220 Generated table #14@0: 102 keys, 4083 bytes
+2026/08/24-21:03:24.228 7220 Compacted 1@0 + 0@1 files => 4083 bytes
+2026/08/24-21:03:24.230 7220 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/08/24-21:03:24.231 7220 Delete type=2 #13
+2026/08/24-21:03:24.232 2d7c Manual compaction at level-0 from '\x00\x08\x01\x02\x01\x0c\x00v\x00c\x00_\x00d\x00e\x00v\x00i\x00c\x00e\x00_\x00i\x00d' @ 15036 : 1 .. (end); will stop at (end)
+2026/08/24-21:03:24.232 2d7c Manual compaction at level-1 from (begin) .. (end); will stop at '\x00\x08\x01\x02\x01\x0c\x00v\x00c\x00_\x00d\x00e\x00v\x00i\x00c\x00e\x00_\x00i\x00d' @ 15208 : 1
+2026/08/24-21:03:24.232 2d7c Compacting 1@1 + 1@2 files
+2026/08/24-21:03:24.248 2d7c Generated table #15@1: 2095 keys, 282677 bytes
+2026/08/24-21:03:24.248 2d7c Compacted 1@1 + 1@2 files => 282677 bytes
+2026/08/24-21:03:24.253 2d7c compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/08/24-21:03:24.253 2d7c Delete type=2 #11
+2026/08/24-21:03:24.254 2d7c Delete type=2 #14
+2026/08/24-21:03:24.255 2d7c Manual compaction at level-1 from '\x00\x08\x01\x02\x01\x0c\x00v\x00c\x00_\x00d\x00e\x00v\x00i\x00c\x00e\x00_\x00i\x00d' @ 15208 : 1 .. (end); will stop at (end)

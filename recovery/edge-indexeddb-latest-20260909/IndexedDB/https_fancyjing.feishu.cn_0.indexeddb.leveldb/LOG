@@ -1,0 +1,15 @@
+2026/08/27-10:30:01.021 4e40 Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_fancyjing.feishu.cn_0.indexeddb.leveldb/MANIFEST-000001
+2026/08/27-10:30:01.022 4e40 Recovering log #205
+2026/08/27-10:30:01.036 4e40 Reusing old log C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_fancyjing.feishu.cn_0.indexeddb.leveldb/000205.log 
+2026/08/27-13:22:48.302 4e40 Level-0 table #210: started
+2026/08/27-13:22:48.347 4e40 Level-0 table #210: 1890479 bytes OK
+2026/08/27-13:22:48.351 4e40 Delete type=0 #205
+2026/08/27-13:22:48.352 4e40 Manual compaction at level-0 from (begin) .. (end); will stop at (end)
+2026/08/27-13:22:48.352 4e40 Manual compaction at level-1 from (begin) .. (end); will stop at '\x00\x14\x06\x02\x01\x10\x00f\x00e\x008\x004\x00d\x006\x007\x004\x007\x006\x00b\x002\x001\x001\x00d\x000' @ 181531 : 1
+2026/08/27-13:22:48.352 4e40 Compacting 1@1 + 1@2 files
+2026/08/27-13:22:48.389 4e40 Generated table #211@1: 8789 keys, 1294684 bytes
+2026/08/27-13:22:48.389 4e40 Compacted 1@1 + 1@2 files => 1294684 bytes
+2026/08/27-13:22:48.390 4e40 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/08/27-13:22:48.390 4e40 Delete type=2 #207
+2026/08/27-13:22:48.390 4e40 Delete type=2 #210
+2026/08/27-13:22:48.391 4e40 Manual compaction at level-1 from '\x00\x14\x06\x02\x01\x10\x00f\x00e\x008\x004\x00d\x006\x007\x004\x007\x006\x00b\x002\x001\x001\x00d\x000' @ 181531 : 1 .. (end); will stop at (end)

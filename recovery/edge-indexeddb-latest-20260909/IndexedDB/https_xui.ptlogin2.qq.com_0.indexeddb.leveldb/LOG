@@ -1,0 +1,6 @@
+2026/09/02-10:28:54.199 1db4 Creating DB C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_xui.ptlogin2.qq.com_0.indexeddb.leveldb since it was missing.
+2026/09/02-10:28:54.203 1db4 Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_xui.ptlogin2.qq.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/09/02-10:30:45.046 1db4 Level-0 table #5: started
+2026/09/02-10:30:45.048 1db4 Level-0 table #5: 3037 bytes OK
+2026/09/02-10:30:45.049 1db4 Delete type=0 #3
+2026/09/02-10:30:45.050 1db4 Manual compaction at level-0 from (begin) .. (end); will stop at (end)

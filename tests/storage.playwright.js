@@ -55,6 +55,8 @@ async function run() {
 
   await context.addInitScript(() => {
     window.__testWrites = [];
+    window.__openPickerOptions = null;
+    window.__savePickerOptions = null;
     window.__testOpenProject = {
       schema: "mindmap.product.v1",
       meta: {
@@ -79,7 +81,9 @@ async function run() {
       selection: { activeId: "node-1", selectedIds: ["node-1"] },
       counters: { nextId: 2 },
     };
-    window.showSaveFilePicker = async () => ({
+    window.showSaveFilePicker = async (options) => {
+      window.__savePickerOptions = options;
+      return {
       name: "playwright-save.mindmap.json",
       queryPermission: async () => "granted",
       requestPermission: async () => "granted",
@@ -89,15 +93,40 @@ async function run() {
         },
         close: async () => {},
       }),
-    });
-    window.showOpenFilePicker = async () => [{
-      name: "opened.mindmap.json",
-      getFile: async () => new File(
-        [JSON.stringify(window.__testOpenProject)],
-        "opened.mindmap.json",
-        { type: "application/json" },
-      ),
-    }];
+      };
+    };
+    window.showOpenFilePicker = async (options) => {
+      window.__openPickerOptions = options;
+      return [{
+        name: "opened.mindmap.json",
+        getFile: async () => new File(
+          [JSON.stringify(window.__testOpenProject)],
+          "opened.mindmap.json",
+          { type: "application/json" },
+        ),
+      }];
+    };
+    window.__newProjectFiles = {};
+    window.__dataDirectoryHandle = {
+      queryPermission: async () => "granted",
+      getFileHandle: async (name, options = {}) => {
+        if (!options.create) {
+          if (window.__newProjectFiles[name]) return { name };
+          const error = new Error("not found");
+          error.name = "NotFoundError";
+          throw error;
+        }
+        return {
+          name,
+          queryPermission: async () => "granted",
+          createWritable: async () => ({
+            write: async (data) => { window.__newProjectFiles[name] = String(data); },
+            close: async () => {},
+          }),
+        };
+      },
+    };
+    window.showDirectoryPicker = async () => window.__dataDirectoryHandle;
   });
 
   const page = await context.newPage();
@@ -146,7 +175,7 @@ async function run() {
     assert.equal(summaryRecovery.project.canvases.main.nodes[0].text, "思维导图产品");
     await page.locator('#canvasSwitcher [data-canvas-id="main"]').click();
     await page.waitForFunction(() => document.querySelector('[data-id="node-1"] .node-title')?.innerText === "思维导图产品");
-    assert.equal(await page.locator("#nodeDetail").evaluate((editor) => editor.innerText), "");
+    assert.equal(await page.locator("#nodeDetail").evaluate((editor) => editor.innerText.replace(/\n+$/, "")), "");
     console.log("ok canvas switcher keeps main and summary canvases independent");
 
     assert.equal(await page.locator('[data-color="white"]').count(), 1, "white node color swatch should exist");
@@ -181,10 +210,16 @@ async function run() {
     console.log("ok Ctrl+S writes full recovery backup without picker");
 
     await page.locator("#saveAsFile").click();
+    await page.waitForFunction(() => window.__testWrites.length >= 1, null, { timeout: 6000 });
     await waitSaved(page);
     const writesAfterSaveAs = await page.evaluate(() => window.__testWrites.slice());
     assert.equal(writesAfterSaveAs.length >= 1, true, "Save As should write to a file handle");
     const savedProject = JSON.parse(writesAfterSaveAs.at(-1));
+    assert.equal(
+      await page.evaluate(() => window.__savePickerOptions.startIn === window.__dataDirectoryHandle),
+      true,
+      "Save As should start in the data directory",
+    );
     assert.equal(savedProject.canvases.main.nodes[0].detail, "自动保存测试");
     assert.equal(savedProject.canvases.main.nodes[0].detailHtml, "自动保存测试");
     assert.equal(savedProject.canvases.summary.nodes[0].detail, "概要说明");
@@ -202,14 +237,40 @@ async function run() {
     assert.equal(ctrlSavedProject.canvases.summary.nodes[0].detail, "概要说明");
     console.log("ok Ctrl+S writes full project to existing file handle");
 
+    // Switching files immediately after an edit must flush the pending edit
+    // before the global file handle/project state changes.
+    await page.locator("#nodeDetail").fill("切换前最后编辑");
     await page.locator("#openFile").click();
     await page.waitForSelector("text=打开文件节点");
-    assert.equal(await page.locator("#nodeDetail").evaluate((editor) => editor.innerText), "来自打开文件");
+    const flushedWrites = await page.evaluate(() => window.__testWrites.slice());
+    assert.equal(
+      flushedWrites.some((entry) => JSON.parse(entry).canvases.main.nodes[0].detail === "切换前最后编辑"),
+      true,
+    );
+    console.log("ok switching files flushes pending edits before replacement");
+
+    assert.equal(
+      await page.locator("#nodeDetail").evaluate((editor) => editor.innerText.replace(/\n+$/, "")),
+      "来自打开文件",
+    );
     const openRecovery = await getStoredValue(page, "recovery-project");
+    assert.equal(
+      await page.evaluate(() => window.__openPickerOptions.startIn === window.__dataDirectoryHandle),
+      true,
+      "Open should start in the data directory",
+    );
+    assert.equal(
+      await page.evaluate(() => "types" in window.__openPickerOptions),
+      false,
+      "Open should not hide files through browser extension filtering",
+    );
     assert.equal(openRecovery.project.meta.title, "Playwright 打开项目");
     assert.equal(openRecovery.project.schema, "mindmap.product.v2");
     assert.equal(openRecovery.project.canvases.main.nodes[0].text, "打开文件节点");
     assert.equal(openRecovery.project.canvases.summary.nodes[0].text, "副画布");
+    const perFileRecovery = await getStoredValue(page, "recovery-project-file-opened.mindmap.json");
+    assert.equal(perFileRecovery.fileName, "opened.mindmap.json");
+    assert.equal(perFileRecovery.project.canvases.main.nodes[0].text, "打开文件节点");
     console.log("ok open file loads project and backs it up");
 
     const [download] = await Promise.all([
@@ -222,6 +283,17 @@ async function run() {
     assert.equal(markdown.includes("# Playwright 打开项目"), true);
     assert.equal(markdown.includes("- 打开文件节点"), true);
     console.log("ok Markdown export downloads readable outline");
+
+    await page.locator("#newFile").click();
+    await page.locator("#newFileName").fill("新建项目");
+    await page.locator("#confirmNewFile").click();
+    await page.waitForFunction(() => document.querySelector("#saveStatus")?.textContent === "已新建");
+    const newProject = await page.evaluate(() => JSON.parse(window.__newProjectFiles["新建项目.mindmap.json"]));
+    assert.equal(newProject.meta.title, "新建项目");
+    assert.equal(newProject.schema, "mindmap.product.v2");
+    assert.equal(await page.locator("#newFileDialog").evaluate((dialog) => dialog.open), false);
+    assert.equal(await page.locator('[data-id="node-1"] .node-title').textContent(), "主画布");
+    console.log("ok new file initializes, writes, and opens a project");
   } finally {
     await context.close();
   }

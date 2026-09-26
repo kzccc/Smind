@@ -76,6 +76,7 @@
       tx: viewport.tx ?? 420,
       ty: viewport.ty ?? 300,
       inspectorWidth: viewport.inspectorWidth ?? 390,
+      inspectorHeight: viewport.inspectorHeight ?? 320,
     };
   }
 

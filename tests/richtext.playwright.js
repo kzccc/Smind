@@ -226,7 +226,7 @@ async function run() {
       }));
     });
     const pasted = await page.locator("#nodeDetail").evaluate((editor) => ({
-      text: editor.innerText,
+      text: editor.innerText.replace(/\n+$/, ""),
       html: editor.innerHTML,
       fontSize: getComputedStyle(editor).fontSize,
       firstChildFontSize: editor.firstElementChild ? getComputedStyle(editor.firstElementChild).fontSize : "",
@@ -268,7 +268,7 @@ async function run() {
     assert.equal(imagePaste, true);
     await page.waitForSelector("#nodeDetail img");
     const pastedImage = await page.locator("#nodeDetail").evaluate((editor) => ({
-      text: editor.innerText,
+      text: editor.innerText.replace(/\n+$/, ""),
       imageCount: editor.querySelectorAll("img").length,
       imageSrc: editor.querySelector("img")?.getAttribute("src") || "",
     }));
@@ -414,7 +414,7 @@ async function run() {
     });
     await page.locator("#detailLineNumbers").click();
     const numbered = await page.locator("#nodeDetail").evaluate((editor) => ({
-      text: editor.innerText,
+      text: editor.innerText.replace(/\n+$/, ""),
       html: editor.innerHTML,
     }));
     assert.equal(
@@ -439,7 +439,7 @@ async function run() {
     });
     await page.locator("#detailNormalize").click();
     const normalized = await page.locator("#nodeDetail").evaluate((editor) => ({
-      text: editor.innerText,
+      text: editor.innerText.replace(/\n+$/, ""),
       html: editor.innerHTML,
     }));
     assert.equal(normalized.text, "第一段内容\n第二段内容\n第三段内容");
@@ -467,23 +467,29 @@ async function run() {
         count: editor.querySelectorAll("pre.detail-code-block").length,
         text: code?.textContent || "",
         background: style?.backgroundColor || "",
+        border: style?.border || "",
         font: style?.fontFamily || "",
       };
     });
     assert.equal(codeBlock.count, 1);
     assert.equal(codeBlock.text, "const value = 8;\nif (value > 2) {\n  return value;\n}");
-    assert.equal(codeBlock.background, "rgb(255, 253, 240)");
+    assert.equal(codeBlock.background, "rgb(45, 45, 45)");
+    assert.equal(codeBlock.border, "3px solid rgb(47, 111, 159)");
     assert.equal(codeBlock.font.includes("Consolas"), true);
+    const syntaxClasses = await page.locator("#nodeDetail pre.detail-code-block code").evaluate((code) =>
+      [...code.querySelectorAll("span")].map((span) => span.className));
+    assert.equal(syntaxClasses.includes("tok-keyword"), true);
+    assert.equal(syntaxClasses.includes("tok-number"), true);
     const codeSpacer = await page.locator("#nodeDetail").evaluate((editor) => {
       const block = editor.querySelector("pre.detail-code-block");
-      let count = 0;
-      let next = block?.nextSibling;
-      while (next?.nodeType === Node.ELEMENT_NODE && next.tagName.toLowerCase() === "br") {
-        count += 1;
-        next = next.nextSibling;
-      }
+      const count = editor.querySelectorAll("br[data-detail-trailing-space]").length;
       const code = block?.querySelector("code");
-      const textNode = code?.firstChild;
+      const walker = code ? document.createTreeWalker(code, NodeFilter.SHOW_TEXT) : null;
+      let textNode = null;
+      if (walker) {
+        let current = walker.nextNode();
+        while (current) { textNode = current; current = walker.nextNode(); }
+      }
       const range = document.createRange();
       range.setStart(textNode, textNode.textContent.length);
       range.collapse(true);
@@ -492,12 +498,14 @@ async function run() {
       selection.addRange(range);
       return { count, before: block?.previousSibling?.nodeName || "" };
     });
-    assert.equal(codeSpacer.count, 3, "blocks should reserve three editable spacer lines");
+    assert.equal(codeSpacer.count, 3, "the editor bottom should reserve three editable spacer lines");
     await page.keyboard.press("ArrowDown");
     assert.equal(await page.evaluate(() => {
       const selection = window.getSelection();
       return selection?.anchorNode?.parentElement?.closest?.("pre.detail-code-block") || null;
     }), null, "ArrowDown should leave the code block from its last line");
+    await selectEditorText(page, 0, 5);
+    await page.locator("[data-detail-color='red']").click();
     await page.locator('[data-id="node-2"]').click();
     await page.locator('[data-id="node-1"]').click();
     assert.equal(
@@ -544,6 +552,70 @@ async function run() {
     assert.equal(pointBlock.text, "第一要点\n第二要点");
     assert.equal(pointBlock.background, "rgb(238, 249, 255)");
     console.log("ok要点 button converts selected text into a light-blue point block");
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      const textNode = editor.querySelector("pre.detail-point-block code")?.firstChild;
+      const range = document.createRange();
+      range.setStart(textNode, 0);
+      range.setEnd(textNode, 2);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+    await page.locator("[data-detail-highlight='yellow']").click();
+    assert.equal(
+      await page.locator("#nodeDetail pre.detail-point-block span").evaluate((span) => span.style.backgroundColor),
+      "rgb(255, 248, 204)",
+      "point block text should support highlighting",
+    );
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      editor.innerHTML = '<pre class="detail-code-block"><code>首行块</code></pre>';
+      editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+      const textNode = editor.querySelector("pre code")?.firstChild;
+      const range = document.createRange();
+      range.setStart(textNode, 0);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("Enter");
+    assert.equal(
+      await page.locator("#nodeDetail").evaluate((editor) => Boolean(editor.querySelector("pre")?.previousSibling)),
+      true,
+      "ArrowLeft at a first-line block boundary should allow a blank line before the block",
+    );
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      editor.innerHTML = '<pre class="detail-code-block"><code></code></pre>';
+      editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+      const code = editor.querySelector("pre code");
+      const range = document.createRange();
+      range.setStart(code, 0);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+    await page.keyboard.press("Delete");
+    assert.equal(await page.locator("#nodeDetail pre.detail-code-block").count(), 0, "Delete should remove an empty code block");
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      editor.innerHTML = '<pre class="detail-point-block"><code></code></pre>';
+      editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+      const code = editor.querySelector("pre code");
+      const range = document.createRange();
+      range.setStart(code, 0);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+    await page.keyboard.press("Backspace");
+    assert.equal(await page.locator("#nodeDetail pre.detail-point-block").count(), 0, "Backspace should remove an empty point block");
+    console.log("ok empty blocks delete and first-line blocks allow a blank line before them");
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      editor.innerHTML = '<pre class="detail-point-block"><code>第一要点\n第二要点</code></pre>';
+      editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+    });
     await page.locator("#nodeDetail pre.detail-point-block").click();
     await page.keyboard.press("ControlOrMeta+C");
     await page.locator('[data-id="node-2"]').click();
@@ -571,7 +643,7 @@ async function run() {
     await page.locator("#nodeDetail").click();
     await page.keyboard.press("ControlOrMeta+V");
     const mixedCodePaste = await page.locator("#nodeDetail").evaluate((editor) => ({
-      text: editor.innerText,
+      text: editor.innerText.replace(/\n+$/, ""),
       blocks: editor.querySelectorAll("pre.detail-code-block").length,
     }));
     assert.equal(mixedCodePaste.text.includes("文字前"), true);
@@ -594,7 +666,7 @@ async function run() {
     await page.locator("#nodeDetail").click();
     await page.keyboard.press("ControlOrMeta+V");
     const mixedImagePaste = await page.locator("#nodeDetail").evaluate((editor) => ({
-      text: editor.innerText,
+      text: editor.innerText.replace(/\n+$/, ""),
       images: editor.querySelectorAll("img").length,
     }));
     assert.equal(mixedImagePaste.text.includes("图片前"), true);
@@ -611,7 +683,7 @@ async function run() {
     await page.locator('[data-id="node-2"]').click();
     await page.locator('[data-id="node-1"]').click();
     const restoredSpacing = await page.locator("#nodeDetail").evaluate((editor) => ({
-      text: editor.innerText,
+      text: editor.innerText.replace(/\n+$/, ""),
       html: editor.innerHTML,
     }));
     assert.equal(
@@ -638,7 +710,7 @@ async function run() {
     await page.keyboard.press("Control+Z");
     await page.waitForTimeout(80);
     const afterUndoHighlight = await page.locator("#nodeDetail").evaluate((editor) => ({
-      text: editor.innerText,
+      text: editor.innerText.replace(/\n+$/, ""),
       html: editor.innerHTML,
     }));
     assert.equal(afterUndoHighlight.text, "撤销高亮");
@@ -653,7 +725,7 @@ async function run() {
     await page.keyboard.type("撤销文字");
     await page.keyboard.press("Control+Z");
     await page.waitForTimeout(80);
-    assert.equal(await page.locator("#nodeDetail").evaluate((editor) => editor.innerText), "撤销文");
+    assert.equal(await page.locator("#nodeDetail").evaluate((editor) => editor.innerText.replace(/\n+$/, "")), "撤销文");
     console.log("ok Ctrl+Z undoes recent text input inside inspector");
   } finally {
     await context.close();

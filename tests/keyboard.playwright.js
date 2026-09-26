@@ -76,7 +76,7 @@ async function run() {
     await page.keyboard.press("Space");
     await page.keyboard.type("B");
     assert.equal(
-      await page.locator("#nodeDetail").evaluate((editor) => editor.innerText),
+      await page.locator("#nodeDetail").evaluate((editor) => editor.innerText.replace(/\n+$/, "")),
       "A B",
       "Space inside the detail editor should still insert a normal space",
     );

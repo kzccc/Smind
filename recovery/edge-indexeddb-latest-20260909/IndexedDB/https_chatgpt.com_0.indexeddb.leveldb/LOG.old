@@ -1,0 +1,15 @@
+2026/08/31-11:54:44.536 1db4 Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_chatgpt.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/08/31-11:54:44.537 1db4 Recovering log #7
+2026/08/31-11:54:44.537 1db4 Reusing old log C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_chatgpt.com_0.indexeddb.leveldb/000007.log 
+2026/08/31-11:54:53.820 1db4 Level-0 table #12: started
+2026/08/31-11:54:53.822 1db4 Level-0 table #12: 209 bytes OK
+2026/08/31-11:54:53.823 1db4 Delete type=0 #7
+2026/08/31-11:54:53.824 1db4 Manual compaction at level-0 from (begin) .. (end); will stop at (end)
+2026/08/31-11:54:53.824 1db4 Manual compaction at level-1 from (begin) .. (end); will stop at '\x00\x00\x00\x00\x06' @ 61 : 1
+2026/08/31-11:54:53.824 1db4 Compacting 1@1 + 1@2 files
+2026/08/31-11:54:53.826 1db4 Generated table #13@1: 21 keys, 1206 bytes
+2026/08/31-11:54:53.826 1db4 Compacted 1@1 + 1@2 files => 1206 bytes
+2026/08/31-11:54:53.827 1db4 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/08/31-11:54:53.827 1db4 Delete type=2 #9
+2026/08/31-11:54:53.827 1db4 Delete type=2 #12
+2026/08/31-11:54:53.827 1db4 Manual compaction at level-1 from '\x00\x00\x00\x00\x06' @ 61 : 1 .. (end); will stop at (end)

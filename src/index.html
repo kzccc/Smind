@@ -11,6 +11,7 @@
     <main class="workbench">
       <header class="toolbar">
         <div class="file-actions">
+          <button id="newFile" type="button">新建</button>
           <button id="openFile" type="button">打开</button>
           <button id="saveAsFile" type="button">另存为</button>
           <button id="exportMarkdown" type="button">导出MD</button>
@@ -105,12 +106,37 @@
           <button id="detailNormalize" class="detail-action-button" type="button">规范</button>
           <button id="detailCode" class="detail-action-button" type="button">代码</button>
           <button id="detailPoint" class="detail-action-button" type="button">要点</button>
+          <button id="detailTitle" class="detail-action-button" type="button">标题</button>
         </div>
         <div id="nodeDetail" class="detail-input" contenteditable="true" spellcheck="false"></div>
         <div id="detailImageResizeHandle" aria-hidden="true"></div>
       </div>
     </aside>
   </div>
+
+  <dialog id="newFileDialog" class="new-file-dialog" aria-labelledby="newFileDialogTitle">
+    <form id="newFileForm" method="dialog">
+      <h2 id="newFileDialogTitle">新建思维导图</h2>
+      <label for="newFileName">文件名称</label>
+      <input id="newFileName" type="text" autocomplete="off" required>
+      <p id="newFileError" class="new-file-error" role="alert"></p>
+      <div class="new-file-actions">
+        <button id="cancelNewFile" type="button">取消</button>
+        <button id="confirmNewFile" type="submit">确定</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="openFileDialog" class="new-file-dialog" aria-labelledby="openFileDialogTitle">
+    <form method="dialog">
+      <h2 id="openFileDialogTitle">打开思维导图</h2>
+      <div id="openFileList" class="open-file-list"></div>
+      <p id="openFileError" class="new-file-error" role="alert"></p>
+      <div class="new-file-actions">
+        <button id="cancelOpenFile" type="submit">取消</button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="./logic.js"></script>
   <script src="./app.js"></script>

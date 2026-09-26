@@ -1,0 +1,6 @@
+2026/09/07-19:20:13.652 32a4 Creating DB C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_accounts.feishu.cn_0.indexeddb.leveldb since it was missing.
+2026/09/07-19:20:13.659 32a4 Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_accounts.feishu.cn_0.indexeddb.leveldb/MANIFEST-000001
+2026/09/07-19:23:54.088 32a4 Level-0 table #5: started
+2026/09/07-19:23:54.090 32a4 Level-0 table #5: 1332 bytes OK
+2026/09/07-19:23:54.092 32a4 Delete type=0 #3
+2026/09/07-19:23:54.092 32a4 Manual compaction at level-0 from (begin) .. (end); will stop at (end)

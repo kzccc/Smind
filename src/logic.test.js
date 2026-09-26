@@ -274,7 +274,7 @@ run("createProjectDocument stores nodes, viewport, selection, and counters", () 
   assert.equal(project.canvases.main.title, "主画布");
   assert.equal(project.canvases.summary.title, "副画布");
   assert.equal(project.canvases.main.nodes.length, nodes.length);
-  assert.deepEqual(project.canvases.main.viewport, { scale: 1.25, tx: 120, ty: 80, inspectorWidth: 520 });
+  assert.deepEqual(project.canvases.main.viewport, { scale: 1.25, tx: 120, ty: 80, inspectorWidth: 520, inspectorHeight: 320 });
   assert.deepEqual(project.canvases.main.selection, { activeId: "a", selectedIds: ["a", "b"] });
   assert.deepEqual(project.canvases.main.counters, { nextId: 42 });
 
@@ -346,8 +346,8 @@ run("normalizeProjectDocument preserves independent v2 canvases", () => {
   assert.equal(project.canvases.main.nodes[0].text, "主内容");
   assert.equal(project.canvases.summary.nodes[0].text, "概要内容");
   assert.equal(project.canvases.summary.nodes[0].color, "blue");
-  assert.deepEqual(project.canvases.main.viewport, { scale: 0.8, tx: 10, ty: 20, inspectorWidth: 410 });
-  assert.deepEqual(project.canvases.summary.viewport, { scale: 1.4, tx: 30, ty: 40, inspectorWidth: 430 });
+  assert.deepEqual(project.canvases.main.viewport, { scale: 0.8, tx: 10, ty: 20, inspectorWidth: 410, inspectorHeight: 320 });
+  assert.deepEqual(project.canvases.summary.viewport, { scale: 1.4, tx: 30, ty: 40, inspectorWidth: 430, inspectorHeight: 320 });
   assert.deepEqual(project.canvases.main.counters, { nextId: 7 });
   assert.deepEqual(project.canvases.summary.counters, { nextId: 3 });
 });

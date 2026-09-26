@@ -1,0 +1,98 @@
+[
+  {
+    "db": "chrome-extension_amkbmndfnliijdhojkpoglbnaaahippg_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "devtools_devtools_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "file__0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_accounts.feishu.cn_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_chat.deepseek.com_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_chatgpt.com_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_cloud.tencent.com_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_cn.bing.com_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_codeup.aliyun.com_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_fancyjing.feishu.cn_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_github.com_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_kcnbjh5ebqm9.feishu.cn_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_leetcode.cn_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_ntp.msn.cn_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_ntp.msn.com_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_ocnk15rrs0pu.feishu.cn_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_scnapmt886j4.feishu.cn_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_www.bing.com_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_www.creditchina.gov.cn_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_www.freeconvert.com_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_www.goofish.com_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_xui.ptlogin2.qq.com_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_yatsen2016.feishu.cn_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  },
+  {
+    "db": "https_zhuanlan.zhihu.com_0.indexeddb.leveldb",
+    "error": "Error: Invalid argument: idb_cmp1 does not match existing comparator : leveldb.BytewiseComparator"
+  }
+]

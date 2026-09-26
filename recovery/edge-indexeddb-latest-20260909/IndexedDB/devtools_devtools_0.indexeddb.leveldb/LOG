@@ -1,0 +1,15 @@
+2026/08/31-16:59:29.657 1db4 Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\devtools_devtools_0.indexeddb.leveldb/MANIFEST-000001
+2026/08/31-16:59:29.658 1db4 Recovering log #31
+2026/08/31-16:59:29.658 1db4 Reusing old log C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\devtools_devtools_0.indexeddb.leveldb/000031.log 
+2026/08/31-17:38:44.508 1db4 Level-0 table #36: started
+2026/08/31-17:38:44.513 1db4 Level-0 table #36: 209 bytes OK
+2026/08/31-17:38:44.514 1db4 Delete type=0 #31
+2026/08/31-17:38:44.515 1db4 Manual compaction at level-0 from (begin) .. (end); will stop at (end)
+2026/08/31-17:38:44.515 1db4 Manual compaction at level-1 from (begin) .. (end); will stop at '\x00\x00\x00\x00\x06' @ 301 : 1
+2026/08/31-17:38:44.515 1db4 Compacting 1@1 + 1@2 files
+2026/08/31-17:38:44.517 1db4 Generated table #37@1: 25 keys, 1089 bytes
+2026/08/31-17:38:44.517 1db4 Compacted 1@1 + 1@2 files => 1089 bytes
+2026/08/31-17:38:44.518 1db4 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/08/31-17:38:44.518 1db4 Delete type=2 #33
+2026/08/31-17:38:44.518 1db4 Delete type=2 #36
+2026/08/31-17:38:44.519 1db4 Manual compaction at level-1 from '\x00\x00\x00\x00\x06' @ 301 : 1 .. (end); will stop at (end)

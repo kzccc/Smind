@@ -1,0 +1,6 @@
+2026/08/27-15:42:07.520 3074 Creating DB C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_www.goofish.com_0.indexeddb.leveldb since it was missing.
+2026/08/27-15:42:07.543 3074 Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_www.goofish.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/08/27-15:42:15.228 3074 Level-0 table #5: started
+2026/08/27-15:42:15.229 3074 Level-0 table #5: 6545 bytes OK
+2026/08/27-15:42:15.230 3074 Delete type=0 #3
+2026/08/27-15:42:15.231 3074 Manual compaction at level-0 from (begin) .. (end); will stop at (end)

@@ -62,18 +62,25 @@ const state = {
   connectingFromIds: [],
   modifierCreateActive: false,
   inspectorWidth: 390,
+  inspectorHeight: 320,
   inspectorExpanded: false,
   inspectorRestoreWidth: null,
+  inspectorRestoreHeight: null,
   projectMeta: null,
   projectCanvases: null,
   activeCanvasId: CANVAS_MAIN_ID,
   canvasHistories: new Map(),
   currentFileName: "default.mindmap.json",
   fileHandle: null,
+  dataDirectoryHandle: null,
+  windowSessionId: "",
   autosaveTimer: null,
   dirty: false,
   saving: false,
+  savePromise: null,
   saveAgainAfterCurrent: false,
+  saveRevision: 0,
+  committedRevision: 0,
   suppressAutosave: true,
   detailUndoStacks: new Map(),
   restoringDetail: false,
@@ -85,6 +92,9 @@ const state = {
   detailCodePlainClipboard: "",
   detailPointClipboard: null,
   detailPointPlainClipboard: "",
+  detailTitleClipboard: null,
+  detailTitlePlainClipboard: "",
+  detailSelectionRange: null,
 };
 
 const nodes = [
@@ -210,10 +220,19 @@ const nodes = [
 const els = {
   app: document.querySelector("#app"),
   openFile: document.querySelector("#openFile"),
+  newFile: document.querySelector("#newFile"),
   saveAsFile: document.querySelector("#saveAsFile"),
   exportMarkdown: document.querySelector("#exportMarkdown"),
   saveStatus: document.querySelector("#saveStatus"),
   fileInput: document.querySelector("#fileInput"),
+  newFileDialog: document.querySelector("#newFileDialog"),
+  newFileForm: document.querySelector("#newFileForm"),
+  newFileName: document.querySelector("#newFileName"),
+  newFileError: document.querySelector("#newFileError"),
+  cancelNewFile: document.querySelector("#cancelNewFile"),
+  openFileDialog: document.querySelector("#openFileDialog"),
+  openFileList: document.querySelector("#openFileList"),
+  openFileError: document.querySelector("#openFileError"),
   shell: document.querySelector("#canvasShell"),
   canvasSwitcher: document.querySelector("#canvasSwitcher"),
   edgeSvg: document.querySelector("#edgeSvg"),
@@ -230,6 +249,7 @@ const els = {
   detailLineNumbers: document.querySelector("#detailLineNumbers"),
   detailCode: document.querySelector("#detailCode"),
   detailPoint: document.querySelector("#detailPoint"),
+  detailTitle: document.querySelector("#detailTitle"),
   inspectorResizer: document.querySelector("#inspectorResizer"),
   detailImageResizeHandle: document.querySelector("#detailImageResizeHandle"),
   inspectorToggle: document.querySelector("#inspectorToggle"),
@@ -324,7 +344,50 @@ function detailLineHeight(gap) {
 }
 
 function plainTextFromDetailEditor() {
-  return els.nodeDetail.innerText.replace(/\n$/, "");
+  const content = els.nodeDetail.cloneNode(true);
+  content.querySelectorAll("br[data-detail-trailing-space]").forEach((lineBreak) => lineBreak.remove());
+  return content.innerText.replace(/\n$/, "");
+}
+
+const GO_KEYWORDS = new Set("break default func interface select case defer go map struct chan else goto package switch const fallthrough if range type continue for import return var".split(" "));
+const GO_TYPES = new Set("bool byte complex64 complex128 error float32 float64 int int8 int16 int32 int64 rune string uint uint8 uint16 uint32 uint64 uintptr any".split(" "));
+
+function appendGoSyntax(code, text) {
+  const tokenPattern = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|`[^`]*`|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?\b|\b[A-Za-z_][A-Za-z0-9_]*\b)/g;
+  let cursor = 0;
+  const append = (value, className = "") => {
+    if (!value) return;
+    if (!className) code.append(document.createTextNode(value));
+    else {
+      const span = document.createElement("span");
+      span.className = className;
+      span.append(document.createTextNode(value));
+      code.append(span);
+    }
+  };
+  for (const match of String(text || "").matchAll(tokenPattern)) {
+    append(text.slice(cursor, match.index));
+    const token = match[0];
+    let className = "";
+    if (token.startsWith("//") || token.startsWith("/*")) className = "tok-comment";
+    else if (/^[`"']/.test(token)) className = "tok-string";
+    else if (/^\d/.test(token)) className = "tok-number";
+    else if (GO_KEYWORDS.has(token)) className = "tok-keyword";
+    else if (GO_TYPES.has(token)) className = "tok-type";
+    else if (/^[A-Z][A-Za-z0-9_]*$/.test(token)) className = "tok-constant";
+    append(token, className);
+    cursor = match.index + token.length;
+  }
+  append(String(text || "").slice(cursor));
+}
+
+function ensureDetailTrailingSpace() {
+  els.nodeDetail.querySelectorAll("br[data-detail-trailing-space]").forEach((lineBreak) => lineBreak.remove());
+  for (let index = 0; index < DETAIL_BLOCK_SPACER_LINES; index += 1) {
+    const lineBreak = document.createElement("br");
+    lineBreak.setAttribute("data-detail-trailing-space", "true");
+    els.nodeDetail.append(lineBreak);
+  }
 }
 
 function detailTextOffsetFromRange(range) {
@@ -370,14 +433,14 @@ function sanitizeDetailHtml(html) {
   const output = document.createElement("div");
   const defaultFormat = { backgroundColor: "", color: "", fontSize: "" };
 
-  function appendText(text, format) {
+  function appendText(text, format, target = output) {
     if (!text) return;
     const hasStyle = Boolean(format.backgroundColor || format.color || format.fontSize);
     if (!hasStyle) {
-      output.append(document.createTextNode(text));
+      target.append(document.createTextNode(text));
       return;
     }
-    const previous = output.lastChild;
+    const previous = target.lastChild;
     if (
       previous
       && previous.nodeType === Node.ELEMENT_NODE
@@ -394,7 +457,7 @@ function sanitizeDetailHtml(html) {
     if (format.color) span.style.color = format.color;
     if (format.fontSize) span.style.fontSize = format.fontSize;
     span.append(document.createTextNode(text));
-    output.append(span);
+      target.append(span);
   }
 
   function appendBreak() {
@@ -410,7 +473,11 @@ function sanitizeDetailHtml(html) {
 
     const tag = source.tagName.toLowerCase();
     if (tag === "br") {
-      appendBreak();
+      const lineBreak = document.createElement("br");
+      if (source.hasAttribute("data-detail-trailing-space")) {
+        lineBreak.setAttribute("data-detail-trailing-space", "true");
+      }
+      output.append(lineBreak);
       return;
     }
     if (tag === "pre") {
@@ -419,12 +486,54 @@ function sanitizeDetailHtml(html) {
         ? "detail-point-block"
         : "detail-code-block";
       const code = document.createElement("code");
-      code.textContent = (source.textContent || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      function appendCodeContent(node, format = defaultFormat) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          appendText((node.textContent || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n"), format, code);
+          return;
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+        if (node.tagName.toLowerCase() === "br") {
+          appendText("\n", format, code);
+          return;
+        }
+        if (/^tok-/.test(node.className || "")) {
+          const tokenSpan = document.createElement("span");
+          tokenSpan.className = node.className;
+          if (format.backgroundColor || node.style.backgroundColor) tokenSpan.style.backgroundColor = node.style.backgroundColor || format.backgroundColor;
+          if (format.color || node.style.color) tokenSpan.style.color = node.style.color || format.color;
+          if (format.fontSize || node.style.fontSize) tokenSpan.style.fontSize = node.style.fontSize || format.fontSize;
+          tokenSpan.textContent = node.textContent || "";
+          code.append(tokenSpan);
+          return;
+        }
+        const nextFormat = { ...format };
+        if (node.style.backgroundColor) nextFormat.backgroundColor = node.style.backgroundColor;
+        if (node.style.color) nextFormat.color = node.style.color;
+        if (node.style.fontSize) nextFormat.fontSize = node.style.fontSize;
+        [...node.childNodes].forEach((child) => appendCodeContent(child, nextFormat));
+      }
+      const hasTokenSpans = [...source.querySelectorAll("span")].some((span) => /^tok-/.test(span.className));
+      const hasStyledSpans = [...source.querySelectorAll("span")].some((span) => span.hasAttribute("style"));
+      if (!hasTokenSpans && !hasStyledSpans) {
+        appendGoSyntax(code, source.textContent || "");
+      } else {
+        [...source.childNodes].forEach((child) => appendCodeContent(child));
+      }
       codeBlock.append(code);
       output.append(codeBlock);
-      for (let index = 0; index < DETAIL_BLOCK_SPACER_LINES; index += 1) {
-        output.append(document.createElement("br"));
-      }
+      return;
+    }
+    if (tag === "div" && source.classList.contains("detail-title-block")) {
+      const titleBlock = document.createElement("div");
+      titleBlock.className = "detail-title-block";
+      const title = document.createElement("strong");
+      [...source.childNodes].forEach((child) => {
+        if (child.nodeType === Node.TEXT_NODE) title.append(document.createTextNode(child.textContent || ""));
+        else if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === "br") title.append(document.createElement("br"));
+        else if (child.nodeType === Node.ELEMENT_NODE) title.append(document.createTextNode(child.textContent || ""));
+      });
+      titleBlock.append(title);
+      output.append(titleBlock);
       return;
     }
     if (tag === "img") {
@@ -458,18 +567,24 @@ function sanitizeDetailHtml(html) {
   [...template.content.childNodes].forEach((child) => appendClean(child));
   [...output.querySelectorAll("pre.detail-code-block, pre.detail-point-block")].forEach((block) => {
     let next = block.nextSibling;
-    while (next && next.nodeType === Node.ELEMENT_NODE && next.tagName.toLowerCase() === "br") {
+    let removed = 0;
+    while (
+      removed < DETAIL_BLOCK_SPACER_LINES
+      && next
+      && next.nodeType === Node.ELEMENT_NODE
+      && next.tagName.toLowerCase() === "br"
+    ) {
       const remove = next;
       next = next.nextSibling;
       remove.remove();
-    }
-    let spacer = block;
-    for (let index = 0; index < DETAIL_BLOCK_SPACER_LINES; index += 1) {
-      const lineBreak = document.createElement("br");
-      spacer.after(lineBreak);
-      spacer = lineBreak;
+      removed += 1;
     }
   });
+  while (
+    output.lastChild
+    && output.lastChild.nodeType === Node.ELEMENT_NODE
+    && output.lastChild.tagName.toLowerCase() === "br"
+  ) output.lastChild.remove();
   return output.innerHTML;
 }
 
@@ -556,10 +671,26 @@ function setInspectorWidth(width) {
   syncInspectorToggle();
 }
 
+function setInspectorHeight(height, { allowFullHeight = false } = {}) {
+  const minHeight = 180;
+  const maxHeight = Math.max(
+    minHeight,
+    Math.floor(window.innerHeight * (allowFullHeight ? 1 : 0.8)),
+  );
+  state.inspectorHeight = Math.max(minHeight, Math.min(maxHeight, height));
+  els.app.style.setProperty("--inspector-height", `${state.inspectorHeight}px`);
+}
+
+function isBottomInspector() {
+  return window.matchMedia("(max-width: 980px)").matches;
+}
+
 function syncInspectorToggle() {
   if (!els.inspectorToggle) return;
   els.inspectorToggle.setAttribute("aria-expanded", String(state.inspectorExpanded));
-  const label = state.inspectorExpanded ? "恢复侧边栏宽度" : "展开侧边栏";
+  const label = state.inspectorExpanded
+    ? (isBottomInspector() ? "恢复侧边栏高度" : "恢复侧边栏宽度")
+    : "展开侧边栏";
   els.inspectorToggle.setAttribute("aria-label", label);
   els.inspectorToggle.title = label;
   document.body.classList.toggle("inspector-expanded", state.inspectorExpanded);
@@ -568,14 +699,27 @@ function syncInspectorToggle() {
 function toggleInspectorExpanded() {
   if (state.inspectorExpanded) {
     state.inspectorExpanded = false;
-    const restoreWidth = state.inspectorRestoreWidth ?? 390;
-    state.inspectorRestoreWidth = null;
-    setInspectorWidth(restoreWidth);
+    if (isBottomInspector()) {
+      const restoreHeight = state.inspectorRestoreHeight ?? 320;
+      state.inspectorRestoreHeight = null;
+      setInspectorHeight(restoreHeight);
+    } else {
+      const restoreWidth = state.inspectorRestoreWidth ?? 390;
+      state.inspectorRestoreWidth = null;
+      setInspectorWidth(restoreWidth);
+    }
   } else {
-    state.inspectorRestoreWidth = state.inspectorWidth;
-    state.inspectorExpanded = true;
-    setInspectorWidth(window.innerWidth);
+    if (isBottomInspector()) {
+      state.inspectorRestoreHeight = state.inspectorHeight;
+      state.inspectorExpanded = true;
+      setInspectorHeight(window.innerHeight, { allowFullHeight: true });
+    } else {
+      state.inspectorRestoreWidth = state.inspectorWidth;
+      state.inspectorExpanded = true;
+      setInspectorWidth(window.innerWidth);
+    }
   }
+  syncInspectorToggle();
   markDirty();
 }
 
@@ -600,6 +744,7 @@ function currentCanvasDocument() {
       inspectorWidth: state.inspectorExpanded
         ? state.inspectorRestoreWidth ?? 390
         : state.inspectorWidth,
+      inspectorHeight: state.inspectorHeight,
     },
     selection: {
       activeId: state.activeId,
@@ -649,7 +794,9 @@ function loadCanvasDocument(canvas) {
   state.nextId = canvas.counters.nextId;
   state.selected = new Set(canvas.selection.selectedIds);
   state.activeId = canvas.selection.activeId;
+  state.inspectorHeight = canvas.viewport.inspectorHeight ?? 320;
   setInspectorWidth(canvas.viewport.inspectorWidth);
+  setInspectorHeight(state.inspectorHeight);
 }
 
 function resetCanvasTransientState() {
@@ -662,6 +809,8 @@ function resetCanvasTransientState() {
   state.detailCodePlainClipboard = "";
   state.detailPointClipboard = null;
   state.detailPointPlainClipboard = "";
+  state.detailTitleClipboard = null;
+  state.detailTitlePlainClipboard = "";
   clearDetailImageSelection();
 }
 
@@ -708,6 +857,7 @@ function switchCanvas(id) {
 function markDirty() {
   if (state.suppressAutosave) return;
   state.dirty = true;
+  state.saveRevision += 1;
   setSaveStatus("未保存", "dirty");
   window.clearTimeout(state.autosaveTimer);
   state.autosaveTimer = window.setTimeout(() => {
@@ -717,6 +867,10 @@ function markDirty() {
 
 const PROJECT_DB_NAME = "smind-storage";
 const LEGACY_PROJECT_DB_NAME = "mindmap-product-storage";
+
+function sessionStorageKey(prefix) {
+  return `${prefix}-${state.windowSessionId}`;
+}
 
 function openProjectDb(dbName = PROJECT_DB_NAME) {
   return new Promise((resolve, reject) => {
@@ -765,79 +919,234 @@ async function getStoredValue(key) {
   return legacyValue;
 }
 
-async function saveRecovery(project) {
-  await putStoredValue("recovery-project", {
+async function saveRecovery(project, fileName = state.currentFileName) {
+  const snapshot = JSON.parse(JSON.stringify(project));
+  const recovery = {
     savedAt: new Date().toISOString(),
-    fileName: state.currentFileName,
-    project,
-  });
+    fileName: String(fileName || "未命名.mindmap.json"),
+    project: snapshot,
+  };
+  const perFileKey = `recovery-project-file-${encodeURIComponent(recovery.fileName)}`;
+  await Promise.all([
+    putStoredValue(sessionStorageKey("recovery-project"), recovery),
+    // Keep the legacy key for existing recovery data and older tooling. It is
+    // never read while a window session is active, so windows remain isolated.
+    putStoredValue("recovery-project", recovery),
+    putStoredValue(perFileKey, recovery),
+  ]);
+  const verified = await readStoredValue(PROJECT_DB_NAME, perFileKey);
+  if (!verified || verified.fileName !== recovery.fileName || JSON.stringify(verified.project) !== JSON.stringify(snapshot)) {
+    throw new Error("恢复副本校验失败");
+  }
 }
 
-async function rememberFileHandle() {
-  if (!state.fileHandle) return;
+async function getFileRecovery(fileName) {
+  const normalizedName = String(fileName || "未命名.mindmap.json");
+  return getStoredValue(`recovery-project-file-${encodeURIComponent(normalizedName)}`);
+}
+
+async function rememberFileHandle(fileHandle = state.fileHandle, fileName = state.currentFileName) {
+  if (!fileHandle) return;
   try {
-    await putStoredValue("file-handle", {
-      fileName: state.currentFileName,
-      handle: state.fileHandle,
+    await putStoredValue(sessionStorageKey("file-handle"), {
+      fileName: String(fileName || "未命名.mindmap.json"),
+      handle: fileHandle,
     });
   } catch (error) {
     // Some browsers reject FileSystemHandle persistence; recovery still works.
   }
 }
 
-async function writeProjectToHandle(project) {
-  if (!state.fileHandle) return false;
-  if (state.fileHandle.queryPermission) {
-    const permission = await state.fileHandle.queryPermission({ mode: "readwrite" });
+async function rememberDataDirectoryHandle() {
+  if (!state.dataDirectoryHandle) return;
+  try {
+    await putStoredValue(sessionStorageKey("data-directory-handle"), state.dataDirectoryHandle);
+  } catch (error) {
+    // The directory can still be chosen again if this browser cannot persist handles.
+  }
+}
+
+function normalizeNewProjectFileName(value) {
+  const baseName = String(value || "").trim();
+  if (!baseName) throw new Error("请输入文件名称");
+  if (/[\\/:*?"<>|]/.test(baseName)) throw new Error("文件名称不能包含路径或特殊字符");
+  return /\.mindmap\.json$/i.test(baseName) ? baseName : `${baseName}.mindmap.json`;
+}
+
+async function ensureDataDirectoryHandle() {
+  if (state.dataDirectoryHandle) {
+    if (!state.dataDirectoryHandle.queryPermission) return state.dataDirectoryHandle;
+    let permission = await state.dataDirectoryHandle.queryPermission({ mode: "readwrite" });
+    if (permission !== "granted") permission = await state.dataDirectoryHandle.requestPermission({ mode: "readwrite" });
+    if (permission === "granted") {
+      if (state.dataDirectoryHandle.entries) {
+        let hasProjectFile = false;
+        for await (const [name, handle] of state.dataDirectoryHandle.entries()) {
+          if (handle.kind === "file" && /\.json$/i.test(name)) {
+            hasProjectFile = true;
+            break;
+          }
+        }
+        if (hasProjectFile) return state.dataDirectoryHandle;
+        state.dataDirectoryHandle = null;
+      } else {
+        return state.dataDirectoryHandle;
+      }
+    }
+    state.dataDirectoryHandle = null;
+  }
+  if (!window.showDirectoryPicker) throw new Error("当前浏览器不支持直接新建文件");
+  const directory = await window.showDirectoryPicker({
+    id: "smind-data-directory",
+    mode: "readwrite",
+  });
+  state.dataDirectoryHandle = directory;
+  await rememberDataDirectoryHandle();
+  return directory;
+}
+
+function showNewFileError(message = "") {
+  els.newFileError.textContent = message;
+}
+
+function openNewProjectDialog() {
+  if (!els.newFileDialog?.showModal) {
+    setSaveStatus("当前浏览器不支持新建窗口", "error");
+    return;
+  }
+  showNewFileError();
+  els.newFileName.value = "";
+  els.newFileDialog.showModal();
+  els.newFileName.focus();
+}
+
+async function flushPendingSave() {
+  window.clearTimeout(state.autosaveTimer);
+  state.autosaveTimer = null;
+  if (state.savePromise) await state.savePromise;
+  if (state.dirty) await saveNow();
+}
+
+async function createNewProjectFile() {
+  let fileName;
+  try {
+    fileName = normalizeNewProjectFileName(els.newFileName.value);
+    await flushPendingSave();
+    const directory = await ensureDataDirectoryHandle();
+    try {
+      await directory.getFileHandle(fileName);
+      showNewFileError("同名文件已存在，请更换名称");
+      return;
+    } catch (error) {
+      if (error.name !== "NotFoundError") throw error;
+    }
+    const fileHandle = await directory.getFileHandle(fileName, { create: true });
+    const title = fileName.replace(/\.mindmap\.json$/i, "");
+    const project = MindMapLogic.createProjectDocument({ meta: { title } });
+    state.fileHandle = fileHandle;
+    state.currentFileName = fileName;
+    applyProject(project, { fitView: true });
+    await writeProjectToHandle(currentProjectDocument());
+    await saveRecovery(currentProjectDocument());
+    await rememberFileHandle();
+    state.dirty = false;
+    setSaveStatus("已新建", "saved");
+    els.newFileDialog.close();
+  } catch (error) {
+    if (error.name === "AbortError") return;
+    showNewFileError(error.message || "新建失败");
+  }
+}
+
+async function writeProjectToHandle(project, fileHandle = state.fileHandle) {
+  if (!fileHandle) return false;
+  if (fileHandle.queryPermission) {
+    const permission = await fileHandle.queryPermission({ mode: "readwrite" });
     if (permission !== "granted") {
-      const requested = await state.fileHandle.requestPermission({ mode: "readwrite" });
+      const requested = await fileHandle.requestPermission({ mode: "readwrite" });
       if (requested !== "granted") return false;
     }
   }
-  const writable = await state.fileHandle.createWritable();
-  await writable.write(JSON.stringify(project, null, 2));
+  const serialized = JSON.stringify(project, null, 2);
+  const writable = await fileHandle.createWritable();
+  await writable.write(serialized);
   await writable.close();
+  // A successful close is not enough protection on every filesystem provider.
+  // Read back when possible and reject a truncated or stale write.
+  if (fileHandle.getFile) {
+    const written = await fileHandle.getFile();
+    const actual = await written.text();
+    if (actual !== serialized) throw new Error("文件写入校验失败，已保留恢复副本");
+  }
   return true;
 }
 
 async function saveNow(options = {}) {
   window.clearTimeout(state.autosaveTimer);
+  state.autosaveTimer = null;
   if (state.saving) {
     state.saveAgainAfterCurrent = true;
-    return;
+    return state.savePromise;
   }
-  const project = currentProjectDocument();
+  const project = JSON.parse(JSON.stringify(currentProjectDocument()));
+  const fileHandle = state.fileHandle;
+  const fileName = state.currentFileName;
+  const revision = state.saveRevision;
   state.saving = true;
   setSaveStatus("保存中", "saving");
-  try {
-    const wroteFile = await writeProjectToHandle(project);
-    await saveRecovery(project);
-    if (!wroteFile && options.requireFile) {
-      setSaveStatus("需要另存为", "error");
-    } else {
-      state.dirty = false;
-      setSaveStatus(wroteFile ? "已保存" : "已自动保存", "saved");
-    }
-    await rememberFileHandle();
-  } catch (error) {
+  state.savePromise = (async () => {
     try {
-      await saveRecovery(project);
-      setSaveStatus("已保存恢复副本", "dirty");
-    } catch (recoveryError) {
-      setSaveStatus("保存失败", "error");
+      const wroteFile = await writeProjectToHandle(project, fileHandle);
+      await saveRecovery(project, fileName);
+      const fileWriteRequired = Boolean(fileHandle) || Boolean(options.requireFile);
+      if (!wroteFile && fileWriteRequired) {
+        setSaveStatus("文件写入失败，已保留恢复副本", "error");
+      } else {
+        if (state.saveRevision === revision) {
+          state.dirty = false;
+          state.committedRevision = revision;
+        }
+        setSaveStatus(wroteFile ? "已保存" : "已自动保存", "saved");
+      }
+      await rememberFileHandle(fileHandle, fileName);
+    } catch (error) {
+      try {
+        await saveRecovery(project, fileName);
+        setSaveStatus("已保存恢复副本", "dirty");
+      } catch (recoveryError) {
+        setSaveStatus("保存失败", "error");
+      }
+    } finally {
+      state.saving = false;
+      state.savePromise = null;
+      if (state.saveAgainAfterCurrent) {
+        state.saveAgainAfterCurrent = false;
+        markDirty();
+      }
+      if (state.saveRevision !== revision && !state.saveAgainAfterCurrent) {
+        state.saveAgainAfterCurrent = false;
+        markDirty();
+      }
     }
-  } finally {
-    state.saving = false;
-    if (state.saveAgainAfterCurrent) {
-      state.saveAgainAfterCurrent = false;
-      markDirty();
-    }
-  }
+  })();
+  return state.savePromise;
 }
 
 async function loadProjectFromFile(file, handle = null) {
+  await flushPendingSave();
   const text = await file.text();
-  const project = MindMapLogic.normalizeProjectDocument(JSON.parse(text));
+  let project = MindMapLogic.normalizeProjectDocument(JSON.parse(text));
+  try {
+    const recovery = await getFileRecovery(file.name);
+    const diskTime = Number(file.lastModified || 0);
+    const recoveryTime = Date.parse(recovery?.savedAt || "") || 0;
+    if (recovery?.project && recoveryTime > diskTime) {
+      project = MindMapLogic.normalizeProjectDocument(recovery.project);
+      setSaveStatus("已恢复本地最新副本", "saved");
+    }
+  } catch (error) {
+    // A recovery read failure must not prevent opening a valid file.
+  }
   state.fileHandle = handle;
   state.currentFileName = file.name || "未命名.mindmap.json";
   applyProject(project);
@@ -848,18 +1157,36 @@ async function loadProjectFromFile(file, handle = null) {
 
 async function openProjectFile() {
   try {
+    const dataDirectory = await ensureDataDirectoryHandle();
+    if (dataDirectory?.entries && els.openFileDialog?.showModal) {
+      const files = [];
+      for await (const [name, handle] of dataDirectory.entries()) {
+        if (handle.kind === "file" && /\.json$/i.test(name)) files.push({ name, handle });
+      }
+      files.sort((left, right) => left.name.localeCompare(right.name, "zh-CN"));
+      els.openFileList.replaceChildren();
+      els.openFileError.textContent = files.length ? "" : "data 目录中没有 JSON 文件";
+      for (const entry of files) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = entry.name;
+        button.addEventListener("click", async () => {
+          try {
+            const file = await entry.handle.getFile();
+            await loadProjectFromFile(file, entry.handle);
+            els.openFileDialog.close();
+          } catch (error) {
+            els.openFileError.textContent = error.message || "打开失败";
+          }
+        });
+        els.openFileList.append(button);
+      }
+      els.openFileDialog.showModal();
+      return;
+    }
     if (window.showOpenFilePicker) {
-      const [handle] = await window.showOpenFilePicker({
-        types: [{
-          description: "Mind Map Project",
-          accept: {
-            "application/json": [".mindmap.json", ".json"],
-          },
-        }],
-        multiple: false,
-      });
-      const file = await handle.getFile();
-      await loadProjectFromFile(file, handle);
+      const [handle] = await window.showOpenFilePicker({ multiple: false, startIn: dataDirectory });
+      await loadProjectFromFile(await handle.getFile(), handle);
       return;
     }
     els.fileInput.value = "";
@@ -895,14 +1222,17 @@ async function saveAsProjectFile() {
   const project = currentProjectDocument();
   try {
     if (window.showSaveFilePicker) {
+      const dataDirectory = await ensureDataDirectoryHandle();
       const handle = await window.showSaveFilePicker({
         suggestedName: state.currentFileName || "未命名.mindmap.json",
         types: [{
           description: "Mind Map Project",
           accept: {
-            "application/json": [".mindmap.json", ".json"],
+            "application/json": [".json"],
           },
         }],
+        excludeAcceptAllOption: false,
+        startIn: dataDirectory,
       });
       state.fileHandle = handle;
       state.currentFileName = handle.name || state.currentFileName;
@@ -919,7 +1249,8 @@ async function saveAsProjectFile() {
 
 async function loadDefaultProject() {
   try {
-    const recovery = await getStoredValue("recovery-project");
+    const recovery = await getStoredValue(sessionStorageKey("recovery-project"))
+      || await getStoredValue("recovery-project");
     if (recovery?.project) {
       state.currentFileName = recovery.fileName || "恢复项目.mindmap.json";
       applyProject(recovery.project);
@@ -971,6 +1302,7 @@ function syncInspector() {
   if (els.nodeDetail.innerHTML !== detailHtml) {
     els.nodeDetail.innerHTML = detailHtml;
   }
+  ensureDetailTrailingSpace();
   node.detailHtml = detailHtml;
   node.detailLineGap = normalizeDetailLineGap(node.detailLineGap);
   els.nodeDetail.style.lineHeight = detailLineHeight(node.detailLineGap);
@@ -1068,15 +1400,29 @@ function getDetailRange() {
   return range;
 }
 
+document.addEventListener("selectionchange", () => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+  const range = selection.getRangeAt(0);
+  if (els.nodeDetail.contains(range.commonAncestorContainer)) state.detailSelectionRange = range.cloneRange();
+});
+
 function getDetailSelectionRange() {
   const range = getDetailRange();
-  if (!range || range.collapsed) return null;
-  return range;
+  if (range && !range.collapsed) {
+    state.detailSelectionRange = range.cloneRange();
+    return range;
+  }
+  if (state.detailSelectionRange && els.nodeDetail.contains(state.detailSelectionRange.commonAncestorContainer)) {
+    return state.detailSelectionRange.cloneRange();
+  }
+  return null;
 }
 
 function syncNodeDetailFromEditor() {
   const node = byId(state.activeId);
   if (!node) return;
+  ensureDetailTrailingSpace();
   node.detailHtml = sanitizeDetailHtml(els.nodeDetail.innerHTML);
   node.detail = plainTextFromDetailEditor();
   node.detailLineGap = normalizeDetailLineGap(els.detailLineGap.value);
@@ -1098,6 +1444,7 @@ function removeDetailStyles(root, properties) {
 
 function collapseDetailSelectionAfter(node) {
   const selection = window.getSelection();
+  state.detailSelectionRange = null;
   selection.removeAllRanges();
   const nextRange = document.createRange();
   nextRange.setStartAfter(node);
@@ -1113,6 +1460,7 @@ function applyDetailFormat(format, properties) {
   const fragment = range.extractContents();
   removeDetailStyles(fragment, properties);
   const span = document.createElement("span");
+  if (range.commonAncestorContainer.parentElement?.closest?.("pre.detail-code-block")) span.className = "tok-format";
   if (properties.includes("backgroundColor") && format.backgroundColor) span.style.backgroundColor = format.backgroundColor;
   if (properties.includes("color") && format.color) span.style.color = format.color;
   if (properties.includes("fontSize") && format.fontSize) span.style.fontSize = format.fontSize;
@@ -1289,16 +1637,11 @@ function applyDetailBlock(blockClass) {
   const codeBlock = document.createElement("pre");
   codeBlock.className = blockClass;
   const code = document.createElement("code");
-  code.textContent = blockText;
+  if (blockClass === "detail-code-block") appendGoSyntax(code, blockText);
+  else code.textContent = blockText;
   codeBlock.append(code);
   range.deleteContents();
   range.insertNode(codeBlock);
-  let spacer = codeBlock;
-  for (let index = 0; index < DETAIL_BLOCK_SPACER_LINES; index += 1) {
-    const lineBreak = document.createElement("br");
-    spacer.after(lineBreak);
-    spacer = lineBreak;
-  }
   collapseDetailSelectionAfter(codeBlock);
   syncNodeDetailFromEditor();
   return true;
@@ -1311,55 +1654,15 @@ function detailBlockForCaret() {
   const container = range.startContainer.nodeType === Node.ELEMENT_NODE
     ? range.startContainer
     : range.startContainer.parentElement;
-  return container?.closest?.("pre.detail-code-block, pre.detail-point-block") || null;
+  return container?.closest?.("pre.detail-code-block, pre.detail-point-block, div.detail-title-block") || null;
 }
 
-function setCaretAtDetailBlockSpacer(block, direction) {
+function setCaretOutsideDetailBlock(block, direction) {
   const parent = block?.parentNode;
   if (!parent) return false;
-  const siblings = [...parent.childNodes];
-  const blockIndex = siblings.indexOf(block);
-  if (blockIndex < 0) return false;
-  const step = direction === "up" ? -1 : 1;
-  let index = blockIndex + step;
-  let spacer = null;
-  while (index >= 0 && index < siblings.length) {
-    const candidate = siblings[index];
-    if (candidate.nodeType === Node.ELEMENT_NODE && candidate.tagName.toLowerCase() === "br") {
-      spacer = candidate;
-      break;
-    }
-    if (candidate.nodeType === Node.TEXT_NODE && candidate.textContent) break;
-    if (candidate.nodeType === Node.ELEMENT_NODE && !candidate.matches("br")) break;
-    index += step;
-  }
-  if (!spacer) {
-    const firstSpacer = document.createElement("br");
-    spacer = firstSpacer;
-    if (direction === "up") {
-      parent.insertBefore(firstSpacer, block);
-      let previous = firstSpacer;
-      for (let line = 1; line < DETAIL_BLOCK_SPACER_LINES; line += 1) {
-        const nextSpacer = document.createElement("br");
-        previous.before(nextSpacer);
-        previous = nextSpacer;
-      }
-    } else {
-      parent.insertBefore(firstSpacer, block.nextSibling);
-      let previous = firstSpacer;
-      for (let line = 1; line < DETAIL_BLOCK_SPACER_LINES; line += 1) {
-        const nextSpacer = document.createElement("br");
-        previous.after(nextSpacer);
-        previous = nextSpacer;
-      }
-    }
-  }
   const range = document.createRange();
-  if (direction === "up") {
-    range.setStartBefore(spacer);
-  } else {
-    range.setStartAfter(spacer);
-  }
+  if (direction === "up") range.setStartBefore(block);
+  else range.setStartAfter(block);
   range.collapse(true);
   const selection = window.getSelection();
   selection.removeAllRanges();
@@ -1367,22 +1670,133 @@ function setCaretAtDetailBlockSpacer(block, direction) {
   return true;
 }
 
+function isCaretAtDetailBlockBoundary(block, boundary) {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return false;
+  const caretRange = selection.getRangeAt(0);
+  const textRange = document.createRange();
+  textRange.selectNodeContents(block);
+  if (boundary === "start") {
+    textRange.setEnd(caretRange.startContainer, caretRange.startOffset);
+    return textRange.toString().length === 0;
+  }
+  textRange.setStart(caretRange.startContainer, caretRange.startOffset);
+  return textRange.toString().length === 0;
+}
+
 function handleDetailBlockArrowNavigation(event) {
-  if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return false;
+  if (!["ArrowLeft", "ArrowUp", "ArrowDown"].includes(event.key)) return false;
   const block = detailBlockForCaret();
   if (!block) return false;
+  if (event.key === "ArrowLeft" && isCaretAtDetailBlockBoundary(block, "start")) {
+    event.preventDefault();
+    return setCaretOutsideDetailBlock(block, "up");
+  }
+  if (event.key === "ArrowLeft") return false;
   const text = block.textContent || "";
   const range = window.getSelection().getRangeAt(0);
-  const offset = range.startContainer.nodeType === Node.TEXT_NODE
-    ? range.startOffset
-    : range.startOffset;
+  if (block.classList.contains("detail-title-block")) {
+    const breaks = [...block.querySelectorAll("br")];
+    const hasBreakBefore = breaks.some((lineBreak) => range.comparePoint(lineBreak, 0) > 0);
+    const hasBreakAfter = breaks.some((lineBreak) => range.comparePoint(lineBreak, 0) < 0);
+    if ((event.key === "ArrowUp" && !hasBreakBefore) || (event.key === "ArrowDown" && !hasBreakAfter)) {
+      event.preventDefault();
+      return setCaretOutsideDetailBlock(block, event.key === "ArrowUp" ? "up" : "down");
+    }
+    return false;
+  }
+  const offsetRange = document.createRange();
+  offsetRange.selectNodeContents(block);
+  offsetRange.setEnd(range.startContainer, range.startOffset);
+  const offset = offsetRange.toString().length;
   const firstLine = !text.slice(0, offset).includes("\n");
   const lastLine = !text.slice(offset).includes("\n");
   if ((event.key === "ArrowUp" && firstLine) || (event.key === "ArrowDown" && lastLine)) {
     event.preventDefault();
-    return setCaretAtDetailBlockSpacer(block, event.key === "ArrowUp" ? "up" : "down");
+    return setCaretOutsideDetailBlock(block, event.key === "ArrowUp" ? "up" : "down");
   }
   return false;
+}
+
+function deleteEmptyDetailBlock(event) {
+  if (!["Delete", "Backspace"].includes(event.key)) return false;
+  const block = detailBlockForCaret();
+  if (!block || block.textContent.trim()) return false;
+  event.preventDefault();
+  pushDetailUndo();
+  const range = document.createRange();
+  range.setStartBefore(block);
+  range.collapse(true);
+  block.remove();
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  syncNodeDetailFromEditor();
+  return true;
+}
+
+function insertLineInsideTitleBlock(event) {
+  if (event.key !== "Enter") return false;
+  const block = detailBlockForCaret();
+  if (!block?.classList.contains("detail-title-block")) return false;
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return false;
+  event.preventDefault();
+  pushDetailUndo();
+  const range = selection.getRangeAt(0);
+  const lineBreak = document.createElement("br");
+  range.insertNode(lineBreak);
+  const nextRange = document.createRange();
+  nextRange.setStartAfter(lineBreak);
+  nextRange.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(nextRange);
+  syncNodeDetailFromEditor();
+  return true;
+}
+
+function deleteBeforeDetailBlock(event) {
+  if (event.key !== "Delete") return false;
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return false;
+  const range = selection.getRangeAt(0);
+  if (range.startContainer !== els.nodeDetail) return false;
+  const block = els.nodeDetail.childNodes[range.startOffset];
+  if (!block?.matches?.("pre.detail-code-block, pre.detail-point-block, div.detail-title-block")) return false;
+  const previous = block.previousSibling;
+  if (!previous || previous.nodeType !== Node.ELEMENT_NODE || previous.tagName.toLowerCase() !== "br") return false;
+  event.preventDefault();
+  pushDetailUndo();
+  previous.remove();
+  const nextRange = document.createRange();
+  nextRange.setStartBefore(block);
+  nextRange.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(nextRange);
+  syncNodeDetailFromEditor();
+  return true;
+}
+
+function insertLineBeforeDetailBlock(event) {
+  if (event.key !== "Enter") return false;
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return false;
+  const range = selection.getRangeAt(0);
+  const parent = range.startContainer;
+  if (parent.nodeType !== Node.ELEMENT_NODE || parent !== els.nodeDetail) return false;
+  const block = parent.childNodes[range.startOffset];
+  if (!block?.matches?.("pre.detail-code-block, pre.detail-point-block, div.detail-title-block")) return false;
+  event.preventDefault();
+  pushDetailUndo();
+  const lineBreak = document.createElement("br");
+  parent.insertBefore(lineBreak, block);
+  const nextRange = document.createRange();
+  nextRange.setStartAfter(lineBreak);
+  nextRange.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(nextRange);
+  syncNodeDetailFromEditor();
+  return true;
 }
 
 function applyDetailCodeBlock() {
@@ -1391,6 +1805,27 @@ function applyDetailCodeBlock() {
 
 function applyDetailPointBlock() {
   return applyDetailBlock("detail-point-block");
+}
+
+function applyDetailTitleBlock() {
+  const range = getDetailSelectionRange();
+  if (!range) return false;
+  const titleText = logicalTextFromDetailRange(range).replace(/\n$/, "");
+  if (!titleText) return false;
+  pushDetailUndo();
+  const titleBlock = document.createElement("div");
+  titleBlock.className = "detail-title-block";
+  const title = document.createElement("strong");
+  titleText.split("\n").forEach((line, index) => {
+    if (index > 0) title.append(document.createElement("br"));
+    title.append(document.createTextNode(line));
+  });
+  titleBlock.append(title);
+  range.deleteContents();
+  range.insertNode(titleBlock);
+  collapseDetailSelectionAfter(titleBlock);
+  syncNodeDetailFromEditor();
+  return true;
 }
 
 function insertPlainTextAtDetailSelection(text) {
@@ -1525,7 +1960,7 @@ function pasteIntoDetailEditor(event) {
 
   const clipboardHtml = event.clipboardData?.getData("text/html") || "";
   const sanitizedClipboardHtml = clipboardHtml ? sanitizeDetailHtml(clipboardHtml) : "";
-  if (sanitizedClipboardHtml && (clipboardHtml.includes("<img") || clipboardHtml.includes("<pre"))) {
+  if (sanitizedClipboardHtml && (clipboardHtml.includes("<img") || clipboardHtml.includes("<pre") || clipboardHtml.includes("detail-title-block"))) {
     event.preventDefault();
     pushDetailUndo();
     insertSanitizedDetailHtmlAtSelection(sanitizedClipboardHtml);
@@ -1539,7 +1974,9 @@ function pasteIntoDetailEditor(event) {
       ? state.detailCodeClipboard
       : plainClipboardText === state.detailPointPlainClipboard
         ? state.detailPointClipboard
-        : null);
+        : plainClipboardText === state.detailTitlePlainClipboard
+          ? state.detailTitleClipboard
+          : null);
   if (internalBlockClipboard) {
     event.preventDefault();
     pushDetailUndo();
@@ -1683,7 +2120,7 @@ function detailBlockFromSelection() {
   if (!selection || selection.rangeCount === 0) return null;
   const range = selection.getRangeAt(0);
   if (!els.nodeDetail.contains(range.commonAncestorContainer)) return null;
-  const block = [...els.nodeDetail.querySelectorAll("pre.detail-code-block, pre.detail-point-block")]
+  const block = [...els.nodeDetail.querySelectorAll("pre.detail-code-block, pre.detail-point-block, div.detail-title-block")]
     .find((block) => {
       try {
         return range.intersectsNode(block);
@@ -1693,7 +2130,14 @@ function detailBlockFromSelection() {
     });
   if (!block) return null;
   if (range.collapsed) return block.contains(range.startContainer) ? block : null;
-  if (block.contains(range.startContainer) && block.contains(range.endContainer)) return block;
+  if (block.contains(range.startContainer) && block.contains(range.endContainer)) {
+    // A selection inside a block may be just one sentence. Only intercept it
+    // when the selected text covers the block's complete content.
+    const selectedText = range.toString();
+    const blockText = block.textContent || "";
+    if (selectedText === blockText) return block;
+    return null;
+  }
   const parent = block.parentNode;
   if (
     range.startContainer === parent
@@ -1713,6 +2157,9 @@ function copySelectedDetailBlock(event = null) {
   if (block.classList.contains("detail-point-block")) {
     state.detailPointClipboard = html;
     state.detailPointPlainClipboard = plain;
+  } else if (block.classList.contains("detail-title-block")) {
+    state.detailTitleClipboard = html;
+    state.detailTitlePlainClipboard = plain;
   } else {
     state.detailCodeClipboard = html;
     state.detailCodePlainClipboard = plain;
@@ -2312,7 +2759,8 @@ function onInspectorResizeStart(event) {
   event.stopPropagation();
   if (state.inspectorExpanded) {
     state.inspectorExpanded = false;
-    state.inspectorRestoreWidth = null;
+    if (isBottomInspector()) state.inspectorRestoreHeight = null;
+    else state.inspectorRestoreWidth = null;
     syncInspectorToggle();
   }
   state.pointer = {
@@ -2341,7 +2789,11 @@ function onPointerMove(event) {
   }
 
   if (pointer.type === "inspector-resize") {
-    setInspectorWidth(window.innerWidth - event.clientX);
+    if (isBottomInspector()) {
+      setInspectorHeight(window.innerHeight - event.clientY);
+    } else {
+      setInspectorWidth(window.innerWidth - event.clientX);
+    }
     markDirty();
     return;
   }
@@ -2500,6 +2952,10 @@ function beginActiveTitleEdit() {
 
 function onKeyDown(event) {
   if (isDetailEditorActive() && handleDetailBlockArrowNavigation(event)) return;
+  if (isDetailEditorActive() && deleteEmptyDetailBlock(event)) return;
+  if (isDetailEditorActive() && insertLineInsideTitleBlock(event)) return;
+  if (isDetailEditorActive() && deleteBeforeDetailBlock(event)) return;
+  if (isDetailEditorActive() && insertLineBeforeDetailBlock(event)) return;
   if (event.key === "Control" || event.metaKey) {
     setMode("select");
   }
@@ -2649,6 +3105,13 @@ els.detailFontSize.addEventListener("input", () => {
   applyDetailFontSize(Number(els.detailFontSize.value));
 });
 els.openFile.addEventListener("click", openProjectFile);
+els.newFile?.addEventListener("click", openNewProjectDialog);
+els.cancelNewFile?.addEventListener("click", () => els.newFileDialog.close());
+els.openFileDialog?.addEventListener("close", () => els.openFileList?.replaceChildren());
+els.newFileForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await createNewProjectFile();
+});
 els.saveAsFile.addEventListener("click", saveAsProjectFile);
 els.exportMarkdown.addEventListener("click", exportMarkdownFile);
 els.fileInput.addEventListener("change", async () => {
@@ -2681,6 +3144,8 @@ els.detailCode?.addEventListener("mousedown", (event) => event.preventDefault())
 els.detailCode?.addEventListener("click", applyDetailCodeBlock);
 els.detailPoint?.addEventListener("mousedown", (event) => event.preventDefault());
 els.detailPoint?.addEventListener("click", applyDetailPointBlock);
+els.detailTitle?.addEventListener("mousedown", (event) => event.preventDefault());
+els.detailTitle?.addEventListener("click", applyDetailTitleBlock);
 
 els.canvasSwitcher?.addEventListener("pointerdown", (event) => {
   event.stopPropagation();
@@ -2725,6 +3190,7 @@ window.addEventListener("keyup", (event) => {
 });
 window.addEventListener("resize", () => {
   setInspectorWidth(state.inspectorExpanded ? window.innerWidth : state.inspectorWidth);
+  setInspectorHeight(state.inspectorHeight, { allowFullHeight: state.inspectorExpanded && isBottomInspector() });
   render();
   positionDetailImageResizeHandle();
 });
@@ -2735,6 +3201,8 @@ window.addEventListener("beforeunload", (event) => {
 });
 
 async function bootstrap() {
+  state.windowSessionId = sessionStorage.getItem("smind-window-session") || crypto.randomUUID();
+  sessionStorage.setItem("smind-window-session", state.windowSessionId);
   setInspectorWidth(state.inspectorWidth);
   setMode("pan");
   try {
@@ -2742,16 +3210,32 @@ async function bootstrap() {
   } catch (error) {
     // Best-effort only; IndexedDB recovery still works without persistent quota.
   }
+  let loadedRememberedFile = false;
   try {
-    const stored = await getStoredValue("file-handle");
+    const stored = await getStoredValue(sessionStorageKey("file-handle"));
     if (stored?.handle) {
       state.fileHandle = stored.handle;
       state.currentFileName = stored.fileName || state.currentFileName;
+      try {
+        const latestFile = await state.fileHandle.getFile();
+        await loadProjectFromFile(latestFile, state.fileHandle);
+        loadedRememberedFile = true;
+      } catch (error) {
+        // Fall back to the recovery copy when the file moved or permission expired.
+        state.fileHandle = null;
+      }
     }
   } catch (error) {
     // Some local browser modes block IndexedDB.
   }
-  await loadDefaultProject();
+  try {
+    const directoryHandle = await getStoredValue(sessionStorageKey("data-directory-handle"))
+      || await getStoredValue("data-directory-handle");
+    if (directoryHandle) state.dataDirectoryHandle = directoryHandle;
+  } catch (error) {
+    // The new-file flow will ask for the directory again when needed.
+  }
+  if (!loadedRememberedFile) await loadDefaultProject();
 }
 
 bootstrap();

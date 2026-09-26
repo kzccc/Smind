@@ -1,0 +1,6 @@
+2026/09/02-10:32:19.269 7454 Creating DB C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_www.freeconvert.com_0.indexeddb.leveldb since it was missing.
+2026/09/02-10:32:19.276 7454 Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_www.freeconvert.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/09/02-10:57:33.369 1db4 Level-0 table #5: started
+2026/09/02-10:57:33.372 1db4 Level-0 table #5: 3567 bytes OK
+2026/09/02-10:57:33.375 1db4 Delete type=0 #3
+2026/09/02-10:57:33.376 1db4 Manual compaction at level-0 from (begin) .. (end); will stop at (end)

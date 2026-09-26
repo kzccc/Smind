@@ -1,0 +1,66 @@
+2026/08/26-19:20:19.352 5048 Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_fancyjing.feishu.cn_0.indexeddb.leveldb/MANIFEST-000001
+2026/08/26-19:20:19.352 5048 Recovering log #183
+2026/08/26-19:20:19.367 5048 Reusing old log C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_fancyjing.feishu.cn_0.indexeddb.leveldb/000183.log 
+2026/08/26-19:20:35.427 5048 Level-0 table #188: started
+2026/08/26-19:20:35.467 5048 Level-0 table #188: 1461992 bytes OK
+2026/08/26-19:20:35.469 5048 Delete type=0 #183
+2026/08/26-19:20:37.018 5048 Compacting 1@1 + 1@2 files
+2026/08/26-19:20:37.073 5048 Generated table #189@1: 8110 keys, 1199571 bytes
+2026/08/26-19:20:37.073 5048 Compacted 1@1 + 1@2 files => 1199571 bytes
+2026/08/26-19:20:37.075 5048 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/08/26-19:20:37.075 5048 Delete type=2 #185
+2026/08/26-19:20:37.075 5048 Delete type=2 #188
+2026/08/26-19:21:35.468 5048 Level-0 table #191: started
+2026/08/26-19:21:35.497 5048 Level-0 table #191: 1723479 bytes OK
+2026/08/26-19:21:35.498 5048 Delete type=0 #187
+2026/08/26-19:21:51.570 5048 Compacting 1@1 + 1@2 files
+2026/08/26-19:21:51.602 5048 Generated table #192@1: 8125 keys, 1220871 bytes
+2026/08/26-19:21:51.602 5048 Compacted 1@1 + 1@2 files => 1220871 bytes
+2026/08/26-19:21:51.603 5048 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/08/26-19:21:51.603 5048 Delete type=2 #189
+2026/08/26-19:21:51.604 5048 Delete type=2 #191
+2026/08/26-19:24:57.629 5048 Level-0 table #194: started
+2026/08/26-19:24:57.687 5048 Level-0 table #194: 2180959 bytes OK
+2026/08/26-19:24:57.688 5048 Delete type=0 #190
+2026/08/26-19:26:41.844 5048 Compacting 1@1 + 1@2 files
+2026/08/26-19:26:41.874 5048 Generated table #195@1: 8359 keys, 1250799 bytes
+2026/08/26-19:26:41.874 5048 Compacted 1@1 + 1@2 files => 1250799 bytes
+2026/08/26-19:26:41.875 5048 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/08/26-19:26:41.876 5048 Delete type=2 #192
+2026/08/26-19:26:41.876 5048 Delete type=2 #194
+2026/08/26-19:30:43.550 5048 Level-0 table #197: started
+2026/08/26-19:30:43.596 5048 Level-0 table #197: 2009532 bytes OK
+2026/08/26-19:30:43.597 5048 Delete type=0 #193
+2026/08/26-19:30:47.547 5048 Compacting 1@1 + 1@2 files
+2026/08/26-19:30:47.577 5048 Generated table #198@1: 8357 keys, 1229393 bytes
+2026/08/26-19:30:47.577 5048 Compacted 1@1 + 1@2 files => 1229393 bytes
+2026/08/26-19:30:47.578 5048 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/08/26-19:30:47.578 5048 Delete type=2 #195
+2026/08/26-19:30:47.578 5048 Delete type=2 #197
+2026/08/26-19:31:36.159 5048 Level-0 table #200: started
+2026/08/26-19:31:36.195 5048 Level-0 table #200: 2223511 bytes OK
+2026/08/26-19:31:36.196 5048 Delete type=0 #196
+2026/08/26-19:31:46.813 4a1c Compacting 1@1 + 1@2 files
+2026/08/26-19:31:46.844 4a1c Generated table #201@1: 8573 keys, 1273548 bytes
+2026/08/26-19:31:46.844 4a1c Compacted 1@1 + 1@2 files => 1273548 bytes
+2026/08/26-19:31:46.845 4a1c compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/08/26-19:31:46.845 4a1c Delete type=2 #198
+2026/08/26-19:31:46.845 4a1c Delete type=2 #200
+2026/08/26-19:32:15.195 5048 Level-0 table #203: started
+2026/08/26-19:32:15.217 5048 Level-0 table #203: 1333171 bytes OK
+2026/08/26-19:32:15.218 5048 Delete type=0 #199
+2026/08/26-19:32:34.198 5034 Compacting 1@1 + 1@2 files
+2026/08/26-19:32:34.227 5034 Generated table #204@1: 8569 keys, 1268975 bytes
+2026/08/26-19:32:34.227 5034 Compacted 1@1 + 1@2 files => 1268975 bytes
+2026/08/26-19:32:34.228 5034 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/08/26-19:32:34.228 5034 Delete type=2 #201
+2026/08/26-19:32:34.228 5034 Delete type=2 #203
+2026/08/26-19:33:39.672 5048 Level-0 table #206: started
+2026/08/26-19:33:39.707 5048 Level-0 table #206: 2163058 bytes OK
+2026/08/26-19:33:39.709 5048 Delete type=0 #202
+2026/08/26-19:34:09.209 5048 Compacting 1@1 + 1@2 files
+2026/08/26-19:34:09.266 5048 Generated table #207@1: 8569 keys, 1268482 bytes
+2026/08/26-19:34:09.266 5048 Compacted 1@1 + 1@2 files => 1268482 bytes
+2026/08/26-19:34:09.268 5048 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/08/26-19:34:09.268 5048 Delete type=2 #204
+2026/08/26-19:34:09.268 5048 Delete type=2 #206

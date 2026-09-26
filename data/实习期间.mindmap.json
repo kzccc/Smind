@@ -3,7 +3,7 @@
   "meta": {
     "title": "实习期间",
     "createdAt": "2026-08-16T06:19:08.240Z",
-    "updatedAt": "2026-08-24T02:35:08.629Z"
+    "updatedAt": "2026-09-17T15:47:01.356Z"
   },
   "activeCanvasId": "main",
   "canvases": {
@@ -11,10 +11,11 @@
       "id": "main",
       "title": "主画布",
       "viewport": {
-        "scale": 0.6872086689714892,
-        "tx": 155.11206151753123,
-        "ty": 193.1157771844471,
-        "inspectorWidth": 390
+        "scale": 1.1677183830534565,
+        "tx": -227.68551839001145,
+        "ty": -1139.578381655489,
+        "inspectorWidth": 390,
+        "inspectorHeight": 320
       },
       "nodes": [
         {
@@ -474,13 +475,13 @@
         }
       ],
       "selection": {
-        "activeId": "node-1",
+        "activeId": "node-24",
         "selectedIds": [
-          "node-1"
+          "node-24"
         ]
       },
       "counters": {
-        "nextId": 30
+        "nextId": 31
       }
     },
     "summary": {
@@ -488,9 +489,10 @@
       "title": "副画布",
       "viewport": {
         "scale": 0.66064384,
-        "tx": 278.29864192,
-        "ty": 550.2348902399999,
-        "inspectorWidth": 531
+        "tx": 247.29864192000002,
+        "ty": 284.2348902399999,
+        "inspectorWidth": 531,
+        "inspectorHeight": 320
       },
       "nodes": [
         {
@@ -589,7 +591,7 @@
           "h": 54,
           "text": "完成项",
           "detail": "老八股:\nmysql\nredis\ngolang\n网络\n操作系统\nkafka力扣:hot100\n项目:Echochat\n项目:Helipot\n\n新八股:\nagentrag\ncodtop\naicoding\nLinux\nDocker+部署\nNginx\n微服务\npprof + Grafana + Prometheus\n如何写测试,单侧,集合测试\n代码调试\n手撕sql\n\n\n\n\n\n\n\n\n\n\n\n\n",
-          "detailHtml": "<pre class=\"detail-code-block\"><code>老八股:\nmysql\nredis\ngolang\n网络\n操作系统\nkafka力扣:hot100\n项目:Echochat项目:Helipot</code></pre><pre class=\"detail-code-block\"><code>新八股:agentrag\ncodtop\naicoding</code></pre><pre class=\"detail-code-block\"><code>Linux\nDocker+部署\nNginx</code></pre><pre class=\"detail-code-block\"><code>微服务</code></pre><pre class=\"detail-code-block\"><code>pprof + Grafana + Prometheus\n如何写测试,单侧,集合测试\n代码调试\n手撕sql</code></pre><br><br><br><br><br><br><br><br><br><br><br><br><br>",
+          "detailHtml": "<pre class=\"detail-code-block\"><code>老八股:\nmysql\nredis\ngolang\n网络\n操作系统\nkafka力扣:hot100\n项目:<span class=\"tok-constant\">Echochat</span>项目:<span class=\"tok-constant\">Helipot</span></code></pre><pre class=\"detail-code-block\"><code>新八股:agentrag\ncodtop\naicoding</code></pre><pre class=\"detail-code-block\"><code><span class=\"tok-constant\">Linux</span>\n<span class=\"tok-constant\">Docker</span>+部署\n<span class=\"tok-constant\">Nginx</span></code></pre><pre class=\"detail-code-block\"><code>微服务</code></pre><pre class=\"detail-code-block\"><code>pprof + <span class=\"tok-constant\">Grafana</span> + <span class=\"tok-constant\">Prometheus</span>\n如何写测试,单侧,集合测试\n代码调试\n手撕sql</code></pre>",
           "detailLineGap": 0.5,
           "color": "default",
           "fontSize": 15,
@@ -691,9 +693,9 @@
         }
       ],
       "selection": {
-        "activeId": "node-8",
+        "activeId": "node-1",
         "selectedIds": [
-          "node-8"
+          "node-1"
         ]
       },
       "counters": {

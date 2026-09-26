@@ -1,0 +1,6 @@
+2026/08/21-15:01:47.804 2e64 Creating DB C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_cloud.tencent.com_0.indexeddb.leveldb since it was missing.
+2026/08/21-15:01:47.812 2e64 Reusing MANIFEST C:\Users\32340\AppData\Local\Microsoft\Edge\User Data\Default\IndexedDB\https_cloud.tencent.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/08/21-15:29:06.797 2e64 Level-0 table #5: started
+2026/08/21-15:29:06.806 2e64 Level-0 table #5: 300971 bytes OK
+2026/08/21-15:29:06.808 2e64 Delete type=0 #3
+2026/08/21-15:29:06.810 2e64 Manual compaction at level-0 from (begin) .. (end); will stop at (end)
