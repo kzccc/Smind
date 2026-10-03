@@ -1,0 +1,200 @@
+{
+  "schema": "mindmap.product.v2",
+  "meta": {
+    "title": "Hepilot",
+    "createdAt": "2026-10-03T12:46:59.373Z",
+    "updatedAt": "2026-10-03T17:49:45.934Z"
+  },
+  "activeCanvasId": "main",
+  "canvases": {
+    "main": {
+      "id": "main",
+      "title": "主画布",
+      "viewport": {
+        "scale": 0.8749552507299833,
+        "tx": 425.1329652572295,
+        "ty": -108.68410386634542,
+        "inspectorWidth": 681.1817626953125,
+        "inspectorHeight": 320
+      },
+      "nodes": [
+        {
+          "id": "node-1",
+          "parentId": null,
+          "x": -281.0291559300903,
+          "y": -87.75105568600614,
+          "w": 136,
+          "h": 54,
+          "text": "claude",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 18,
+          "children": [
+            "node-3",
+            "node-5"
+          ]
+        },
+        {
+          "id": "node-3",
+          "parentId": "node-1",
+          "x": -66.4265447163849,
+          "y": -216.8029011235095,
+          "w": 136,
+          "h": 54,
+          "text": "范式",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": [
+            "node-4"
+          ]
+        },
+        {
+          "id": "node-4",
+          "parentId": "node-3",
+          "x": 137.15290329655897,
+          "y": -269.95147675569496,
+          "w": 136,
+          "h": 54,
+          "text": "claude",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-5",
+          "parentId": "node-1",
+          "x": -67.46199425169634,
+          "y": -106.72070860352233,
+          "w": 136,
+          "h": 54,
+          "text": "loop",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": [
+            "node-6",
+            "node-7"
+          ]
+        },
+        {
+          "id": "node-6",
+          "parentId": "node-5",
+          "x": 217.53800574830365,
+          "y": -106.72070860352233,
+          "w": 218.01387328961522,
+          "h": 54,
+          "text": "注入三部分系统提示词",
+          "detail": "defaultSystemPrompt：就是那份长长的\"你是谁、能干什么、怎么干活\"的说明书（constants/prompts.ts）。它在 messages 之外，单独作为一个字段发给模型。userContext：从 context.ts 看，返回的是 { claudeMd(你的 CLAUDE.md 内容), currentDate(今天几号) }。systemContext：返回的是 { gitStatus(当前分支/改动/最近提交) }。",
+          "detailHtml": "<span style=\"color: rgb(192, 57, 43);\">defaultSystemPrompt</span>：就是那份长长的\"你是谁、能干什么、怎么干活\"的说明书（constants/prompts.ts）。它在 messages 之外，单独作为一个字段发给模型。<br><br><span style=\"color: rgb(192, 57, 43);\">userContext</span>：从 context.ts 看，返回的是 { claudeMd(你的 CLAUDE.md 内容), currentDate(今天几号) }。<br><br><span style=\"color: rgb(192, 57, 43);\">systemContext</span>：返回的是 { gitStatus(当前分支/改动/最近提交) }。",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-7",
+          "parentId": "node-5",
+          "x": 203.6678384263986,
+          "y": -10.189231309964207,
+          "w": 240.9421553696447,
+          "h": 70,
+          "text": "判断是正常聊天还是/功能调用",
+          "detail": "先判断这是不是斜杠命令（/help 这种）。\"你好\"不是，所以 shouldQuery = true，要继续走模型。",
+          "detailHtml": "先判断这是不是斜杠命令（/help 这种）。\"你好\"不是，所以 shouldQuery = true，要继续走模型。",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        },
+        {
+          "id": "node-14",
+          "parentId": null,
+          "x": -381.9825766994385,
+          "y": 374.3697091518807,
+          "w": 136,
+          "h": 54,
+          "text": "Helipot",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 16,
+          "children": [
+            "node-15"
+          ]
+        },
+        {
+          "id": "node-15",
+          "parentId": "node-14",
+          "x": -170.60415714616846,
+          "y": 286.4988299337049,
+          "w": 136,
+          "h": 54,
+          "text": "模型适配层",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
+        }
+      ],
+      "selection": {
+        "activeId": "node-1",
+        "selectedIds": [
+          "node-1"
+        ]
+      },
+      "counters": {
+        "nextId": 16
+      }
+    },
+    "summary": {
+      "id": "summary",
+      "title": "副画布",
+      "viewport": {
+        "scale": 1,
+        "tx": 420,
+        "ty": 300,
+        "inspectorWidth": 390,
+        "inspectorHeight": 320
+      },
+      "nodes": [
+        {
+          "id": "node-1",
+          "parentId": null,
+          "x": 0,
+          "y": 0,
+          "w": 190,
+          "h": 92,
+          "text": "副画布",
+          "detail": "",
+          "detailHtml": "",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 18,
+          "children": []
+        }
+      ],
+      "selection": {
+        "activeId": "node-1",
+        "selectedIds": [
+          "node-1"
+        ]
+      },
+      "counters": {
+        "nextId": 2
+      }
+    }
+  }
+}

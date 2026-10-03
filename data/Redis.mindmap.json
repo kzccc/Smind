@@ -3,7 +3,7 @@
   "meta": {
     "title": "Redis",
     "createdAt": "2026-08-16T06:19:05.514Z",
-    "updatedAt": "2026-08-23T08:29:30.653Z"
+    "updatedAt": "2026-09-30T04:18:28.948Z"
   },
   "activeCanvasId": "main",
   "canvases": {
@@ -11,10 +11,11 @@
       "id": "main",
       "title": "主画布",
       "viewport": {
-        "scale": 0.4095142940670908,
-        "tx": 8.070116929038505,
-        "ty": -864.2885310523168,
-        "inspectorWidth": 668
+        "scale": 0.7523875234079468,
+        "tx": -272.56335208927044,
+        "ty": -116.23040479156339,
+        "inspectorWidth": 668,
+        "inspectorHeight": 320
       },
       "nodes": [
         {
@@ -26,7 +27,7 @@
           "h": 54,
           "text": "Redis",
           "detail": "AOF（Append Only File，追加日志） 是 Redis 的一种持久化方式，用于解决 Redis 数据仅存于内存、重启后数据丢失的问题。\nAOF 的核心思想是：Redis 每执行一条写操作命令，就将该命令以追加的方式写入 AOF 文件中。\n当 Redis 重启时，通过顺序重放 AOF(一般是重放整个文件) 文件中的写命令，来恢复内存中的数据状态。\n\n\n\n",
-          "detailHtml": "AOF（Append Only File，追加日志） 是 Redis 的一种持久化方式，用于解决 Redis 数据仅存于内存、重启后数据丢失的问题。<br>AOF 的核心思想是：Redis 每执行一条写操作命令，就将该命令以追加的方式写入 AOF 文件中。<br>当 Redis 重启时，通过顺序重放 AOF(一般是重放整个文件) 文件中的写命令，来恢复内存中的数据状态。<br><br><br><br><br>",
+          "detailHtml": "AOF（Append Only File，追加日志） 是 Redis 的一种持久化方式，用于解决 Redis 数据仅存于内存、重启后数据丢失的问题。<br>AOF 的核心思想是：Redis 每执行一条写操作命令，就将该命令以追加的方式写入 AOF 文件中。<br>当 Redis 重启时，通过顺序重放 AOF(一般是重放整个文件) 文件中的写命令，来恢复内存中的数据状态。",
           "detailLineGap": 0.5,
           "color": "default",
           "fontSize": 18,
@@ -2942,7 +2943,8 @@
         "scale": 1,
         "tx": 420,
         "ty": 300,
-        "inspectorWidth": 390
+        "inspectorWidth": 390,
+        "inspectorHeight": 320
       },
       "nodes": [
         {
