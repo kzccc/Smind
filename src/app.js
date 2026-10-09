@@ -72,6 +72,8 @@ const state = {
   canvasHistories: new Map(),
   currentFileName: "default.mindmap.json",
   fileHandle: null,
+  fileFingerprint: null,
+  saveConflict: false,
   dataDirectoryHandle: null,
   windowSessionId: "",
   autosaveTimer: null,
@@ -867,6 +869,7 @@ function markDirty() {
 
 const PROJECT_DB_NAME = "smind-storage";
 const LEGACY_PROJECT_DB_NAME = "mindmap-product-storage";
+const MAX_RECOVERY_HISTORY = 20;
 
 function sessionStorageKey(prefix) {
   return `${prefix}-${state.windowSessionId}`;
@@ -896,6 +899,16 @@ async function putStoredValue(key, value) {
       db.close();
       reject(tx.error);
     };
+  });
+}
+
+async function deleteStoredValue(key) {
+  const db = await openProjectDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("kv", "readwrite");
+    tx.objectStore("kv").delete(key);
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
   });
 }
 
@@ -938,6 +951,35 @@ async function saveRecovery(project, fileName = state.currentFileName) {
   if (!verified || verified.fileName !== recovery.fileName || JSON.stringify(verified.project) !== JSON.stringify(snapshot)) {
     throw new Error("恢复副本校验失败");
   }
+  const indexKey = sessionStorageKey("recovery-history-index");
+  let history = await getStoredValue(indexKey);
+  if (!Array.isArray(history)) history = [];
+  const historyKey = `${sessionStorageKey("recovery-history")}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  await putStoredValue(historyKey, recovery);
+  history.push(historyKey);
+  while (history.length > MAX_RECOVERY_HISTORY) {
+    const expiredKey = history.shift();
+    try { await deleteStoredValue(expiredKey); } catch (error) { /* best effort */ }
+  }
+  await putStoredValue(indexKey, history);
+}
+
+function fileFingerprint(file) {
+  if (!file) return null;
+  return { name: file.name || "", size: Number(file.size) || 0, lastModified: Number(file.lastModified) || 0 };
+}
+
+function sameFileFingerprint(left, right) {
+  return Boolean(left && right)
+    && left.name === right.name
+    && left.size === right.size
+    && left.lastModified === right.lastModified;
+}
+
+async function refreshFileFingerprint() {
+  if (!state.fileHandle?.getFile) return null;
+  state.fileFingerprint = fileFingerprint(await state.fileHandle.getFile());
+  return state.fileFingerprint;
 }
 
 async function getFileRecovery(fileName) {
@@ -1067,6 +1109,14 @@ async function writeProjectToHandle(project, fileHandle = state.fileHandle) {
       if (requested !== "granted") return false;
     }
   }
+  if (fileHandle === state.fileHandle && state.fileFingerprint && fileHandle.getFile) {
+    const currentFingerprint = fileFingerprint(await fileHandle.getFile());
+    if (!sameFileFingerprint(state.fileFingerprint, currentFingerprint)) {
+      const error = new Error("文件已被其他窗口或程序修改");
+      error.code = "FILE_CONFLICT";
+      throw error;
+    }
+  }
   const serialized = JSON.stringify(project, null, 2);
   const writable = await fileHandle.createWritable();
   await writable.write(serialized);
@@ -1078,6 +1128,7 @@ async function writeProjectToHandle(project, fileHandle = state.fileHandle) {
     const actual = await written.text();
     if (actual !== serialized) throw new Error("文件写入校验失败，已保留恢复副本");
   }
+  if (fileHandle === state.fileHandle) await refreshFileFingerprint();
   return true;
 }
 
@@ -1110,6 +1161,19 @@ async function saveNow(options = {}) {
       }
       await rememberFileHandle(fileHandle, fileName);
     } catch (error) {
+      if (error.code === "FILE_CONFLICT") {
+        state.fileHandle = null;
+        state.fileFingerprint = null;
+        state.saveConflict = true;
+        state.dirty = true;
+        try {
+          await saveRecovery(project, fileName);
+          setSaveStatus("文件已被其他窗口修改，已保留恢复副本", "error");
+        } catch (recoveryError) {
+          setSaveStatus("文件冲突，恢复副本保存失败", "error");
+        }
+        return;
+      }
       try {
         await saveRecovery(project, fileName);
         setSaveStatus("已保存恢复副本", "dirty");
@@ -1149,6 +1213,8 @@ async function loadProjectFromFile(file, handle = null) {
   }
   state.fileHandle = handle;
   state.currentFileName = file.name || "未命名.mindmap.json";
+  state.fileFingerprint = fileFingerprint(file);
+  state.saveConflict = false;
   applyProject(project);
   setSaveStatus("已打开", "saved");
   await saveRecovery(currentProjectDocument());
