@@ -8,6 +8,7 @@
     "test:storage": "node tests/storage.playwright.js",
     "test:push-button": "node tests/push-button.playwright.js",
     "git-helper": "node tools/git-push-server.js",
+    "git-helper-startup": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/start-git-helper.ps1",
     "test:save-conflict": "node tests/save-conflict.playwright.js"
   },
   "dependencies": {

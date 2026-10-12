@@ -1299,6 +1299,7 @@ async function pushRepository() {
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.ok) throw new Error(result.error || "推送失败");
     setSaveStatus(result.message || "已推送", "saved");
+    window.alert("推送已完成");
   } catch (error) {
     const message = error instanceof TypeError && /fetch/i.test(error.message)
       ? "本地 Git helper 未启动，请运行 npm run git-helper"

@@ -13,6 +13,8 @@ async function run() {
   const page = await context.newPage();
   await page.addInitScript(() => {
     window.__pushRequests = 0;
+    window.__alerts = [];
+    window.alert = (message) => window.__alerts.push(String(message));
     window.__originalFetch = window.fetch.bind(window);
     window.fetch = async (url, options) => {
       if (url === "http://127.0.0.1:32123/push") {
@@ -30,6 +32,7 @@ async function run() {
     await page.locator("#pushRepository").click();
     await page.waitForFunction(() => window.__pushRequests === 1);
     await page.waitForFunction(() => document.querySelector("#saveStatus")?.textContent === "已推送");
+    assert.deepEqual(await page.evaluate(() => window.__alerts), ["推送已完成"]);
     console.log("ok push button calls local repository helper");
   } finally {
     await context.close();
