@@ -3,7 +3,7 @@
   "meta": {
     "title": "aveil",
     "createdAt": "2026-09-08T03:21:43.614Z",
-    "updatedAt": "2026-10-12T11:34:20.955Z"
+    "updatedAt": "2026-10-12T13:42:39.511Z"
   },
   "activeCanvasId": "main",
   "canvases": {
@@ -12,8 +12,8 @@
       "title": "主画布",
       "viewport": {
         "scale": 0.7101208928245325,
-        "tx": -293.2154606986088,
-        "ty": -1209.2054832951749,
+        "tx": -348.2154606986088,
+        "ty": -1153.2054832951749,
         "inspectorWidth": 756.5064697265625,
         "inspectorHeight": 600
       },
