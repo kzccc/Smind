@@ -225,6 +225,7 @@ const els = {
   newFile: document.querySelector("#newFile"),
   saveAsFile: document.querySelector("#saveAsFile"),
   exportMarkdown: document.querySelector("#exportMarkdown"),
+  pushRepository: document.querySelector("#pushRepository"),
   saveStatus: document.querySelector("#saveStatus"),
   fileInput: document.querySelector("#fileInput"),
   newFileDialog: document.querySelector("#newFileDialog"),
@@ -1282,6 +1283,30 @@ function exportMarkdownFile() {
   link.download = `${title || "mindmap"}.md`;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+async function pushRepository() {
+  if (!els.pushRepository) return;
+  els.pushRepository.disabled = true;
+  setSaveStatus("推送中", "saving");
+  try {
+    await flushPendingSave();
+    const response = await fetch("http://127.0.0.1:32123/push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.error || "推送失败");
+    setSaveStatus(result.message || "已推送", "saved");
+  } catch (error) {
+    const message = error instanceof TypeError && /fetch/i.test(error.message)
+      ? "本地 Git helper 未启动，请运行 npm run git-helper"
+      : (error.message || "推送失败");
+    setSaveStatus(message, "error");
+  } finally {
+    els.pushRepository.disabled = false;
+  }
 }
 
 async function saveAsProjectFile() {
@@ -3180,6 +3205,7 @@ els.newFileForm?.addEventListener("submit", async (event) => {
 });
 els.saveAsFile.addEventListener("click", saveAsProjectFile);
 els.exportMarkdown.addEventListener("click", exportMarkdownFile);
+els.pushRepository?.addEventListener("click", pushRepository);
 els.fileInput.addEventListener("change", async () => {
   const file = els.fileInput.files?.[0];
   if (!file) return;

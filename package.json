@@ -6,6 +6,8 @@
     "test:performance": "node tests/performance.playwright.js",
     "test:richtext": "node tests/richtext.playwright.js",
     "test:storage": "node tests/storage.playwright.js",
+    "test:push-button": "node tests/push-button.playwright.js",
+    "git-helper": "node tools/git-push-server.js",
     "test:save-conflict": "node tests/save-conflict.playwright.js"
   },
   "dependencies": {
