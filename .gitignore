@@ -1,1 +1,4 @@
 node_modules/
+tools/git-helper.log
+tools/git-helper-error.log
+tools/git-helper-startup.log
