@@ -3,7 +3,7 @@
   "meta": {
     "title": "Hepilot",
     "createdAt": "2026-10-03T12:46:59.373Z",
-    "updatedAt": "2026-10-23T01:49:02.134Z"
+    "updatedAt": "2026-10-23T02:04:23.131Z"
   },
   "activeCanvasId": "main",
   "canvases": {
@@ -11,9 +11,9 @@
       "id": "main",
       "title": "主画布",
       "viewport": {
-        "scale": 0.7866401471046578,
-        "tx": 489.3090204924235,
-        "ty": -114.67851695833247,
+        "scale": 0.649288373685747,
+        "tx": 312.9346419740991,
+        "ty": 106.1731210375815,
         "inspectorWidth": 552,
         "inspectorHeight": 603
       },
