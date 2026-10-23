@@ -3,7 +3,7 @@
   "meta": {
     "title": "Hepilot",
     "createdAt": "2026-10-03T12:46:59.373Z",
-    "updatedAt": "2026-10-21T15:13:37.977Z"
+    "updatedAt": "2026-10-23T01:49:02.134Z"
   },
   "activeCanvasId": "main",
   "canvases": {
@@ -11,11 +11,11 @@
       "id": "main",
       "title": "主画布",
       "viewport": {
-        "scale": 0.47651967723358574,
-        "tx": 368.0742852529621,
-        "ty": -98.75485117633548,
+        "scale": 0.7866401471046578,
+        "tx": 489.3090204924235,
+        "ty": -114.67851695833247,
         "inspectorWidth": 552,
-        "inspectorHeight": 827.727294921875
+        "inspectorHeight": 603
       },
       "nodes": [
         {
@@ -710,7 +710,7 @@
         {
           "id": "node-70",
           "parentId": "node-69",
-          "x": 618.8500163603921,
+          "x": 620.0744175467079,
           "y": 1090,
           "w": 136,
           "h": 54,
@@ -754,9 +754,9 @@
         }
       ],
       "selection": {
-        "activeId": "node-69",
+        "activeId": "node-1",
         "selectedIds": [
-          "node-69"
+          "node-1"
         ]
       },
       "counters": {
