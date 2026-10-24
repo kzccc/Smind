@@ -1372,6 +1372,7 @@ function setMode(mode) {
 }
 
 function selectOnly(id) {
+  flushActiveDetailEditor();
   state.selected = new Set([id]);
   state.activeId = id;
   state.connectingFromIds = [];
@@ -1464,6 +1465,7 @@ function addSibling() {
 
 function applyColor(color) {
   if (state.selected.size === 0) return;
+  flushActiveDetailEditor();
   saveHistory();
   selectedNodes().forEach((node) => {
     node.color = color;
@@ -1520,6 +1522,16 @@ function syncNodeDetailFromEditor() {
   node.detailLineGap = normalizeDetailLineGap(els.detailLineGap.value);
   updateNodeDom(node.id);
   markDirty();
+}
+
+function flushActiveDetailEditor() {
+  const node = byId(state.activeId);
+  if (!node) return;
+  const editorHtml = sanitizeDetailHtml(els.nodeDetail.innerHTML);
+  const editorDetail = plainTextFromDetailEditor();
+  const editorLineGap = normalizeDetailLineGap(els.detailLineGap.value);
+  if (node.detailHtml === editorHtml && node.detail === editorDetail && node.detailLineGap === editorLineGap) return;
+  syncNodeDetailFromEditor();
 }
 
 function removeDetailStyles(root, properties) {
@@ -2614,6 +2626,7 @@ function updateNodeElement(node) {
   if (title) {
     if (state.editingId !== node.id && title.textContent !== node.text) title.textContent = node.text;
     title.style.fontSize = `${node.fontSize}px`;
+    title.style.color = (palette[node.color] || palette.default).text;
   }
 }
 
@@ -2764,6 +2777,8 @@ function onNodePointerDown(event, id) {
   if (state.editingId) {
     return;
   }
+
+  flushActiveDetailEditor();
 
   event.preventDefault();
   if (state.connectingFromIds.length > 0) {

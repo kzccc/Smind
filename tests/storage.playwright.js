@@ -183,6 +183,8 @@ async function run() {
     await page.locator('[data-color="black"]').click();
     await waitSaved(page);
     assert.equal(await page.locator('[data-id="node-1"]').getAttribute("data-color"), "black");
+    assert.equal(await page.locator('[data-id="node-1"] .node-title').textContent(), "思维导图产品");
+    assert.equal(await page.locator('[data-id="node-1"] .node-title').evaluate((title) => getComputedStyle(title).color), "rgb(255, 255, 255)");
     const blackRecovery = await getStoredValue(page, "recovery-project");
     assert.equal(blackRecovery.project.canvases.main.nodes[0].color, "black");
     await page.locator('[data-color="white"]').click();
@@ -190,7 +192,62 @@ async function run() {
     assert.equal(await page.locator('[data-id="node-1"]').getAttribute("data-color"), "white");
     const whiteRecovery = await getStoredValue(page, "recovery-project");
     assert.equal(whiteRecovery.project.canvases.main.nodes[0].color, "white");
-    console.log("ok white and black canvas node colors apply and persist");
+    await page.locator('[data-id="node-1"] .node-title').dblclick();
+    await page.locator('[data-id="node-1"] .node-title').fill("白色节点换色后文字仍保留");
+    await page.locator('button[data-color="blue"]').click();
+    assert.equal(await page.locator('[data-id="node-1"] .node-title').textContent(), "白色节点换色后文字仍保留");
+    await waitSaved(page);
+    const recoloredRecovery = await getStoredValue(page, "recovery-project");
+    assert.equal(recoloredRecovery.project.canvases.main.nodes[0].text, "白色节点换色后文字仍保留");
+    assert.equal(recoloredRecovery.project.canvases.main.nodes[0].color, "blue");
+    await page.locator('[data-id="node-1"]').click();
+    await page.locator("#nodeDetail").fill("白色节点的详情文字，换色后仍应保存");
+    await page.locator('button[data-color="white"]').click();
+    await page.locator('button[data-color="blue"]').click();
+    await page.locator('[data-id="node-2"]').click();
+    await page.locator('[data-id="node-1"]').click();
+    assert.equal(
+      await page.locator("#nodeDetail").evaluate((editor) => editor.innerText.replace(/\n+$/, "")),
+      "白色节点的详情文字，换色后仍应保存",
+      "detail editor content should survive color change and switching away/back",
+    );
+    await waitSaved(page);
+    const recoloredDetailRecovery = await getStoredValue(page, "recovery-project");
+    assert.equal(recoloredDetailRecovery.project.canvases.main.nodes[0].detail, "白色节点的详情文字，换色后仍应保存");
+    await page.locator('[data-id="node-1"]').click();
+    await page.locator("#nodeDetail").click();
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.type("失焦前最后输入的详情");
+    await page.locator('[data-id="node-2"]').click();
+    await page.locator('[data-id="node-1"]').click();
+    assert.equal(
+      await page.locator("#nodeDetail").evaluate((editor) => editor.innerText.replace(/\n+$/, "")),
+      "失焦前最后输入的详情",
+      "the last keyboard input should survive clicking another node",
+    );
+    await page.locator('[data-id="node-1"] .node-title').dblclick();
+    await page.locator('[data-id="node-1"] .node-title').fill("刚写入的节点标题");
+    await page.locator('button[data-color="white"]').click();
+    await page.locator('button[data-color="blue"]').click();
+    await page.locator('[data-id="node-2"]').click();
+    await page.locator('[data-id="node-1"]').click();
+    assert.equal(await page.locator('[data-id="node-1"] .node-title').textContent(), "刚写入的节点标题");
+    await waitSaved(page);
+    const recoloredTitleRecovery = await getStoredValue(page, "recovery-project");
+    assert.equal(recoloredTitleRecovery.project.canvases.main.nodes[0].text, "刚写入的节点标题");
+    await page.locator('[data-id="node-1"]').click();
+    await page.locator("#nodeDetail").evaluate((editor) => {
+      editor.innerHTML = "尚未触发 input 的详情";
+    });
+    await page.locator('button[data-color="white"]').click();
+    await page.locator('[data-id="node-2"]').click();
+    await page.locator('[data-id="node-1"]').click();
+    assert.equal(
+      await page.locator("#nodeDetail").evaluate((editor) => editor.innerText.replace(/\n+$/, "")),
+      "尚未触发 input 的详情",
+      "changing color and selection should flush the latest editor DOM",
+    );
+    console.log("ok node text remains visible and persisted after changing color");
 
     await page.locator("#nodeDetail").fill("自动保存测试");
     await waitSaved(page);
