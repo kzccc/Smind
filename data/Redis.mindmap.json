@@ -3,7 +3,7 @@
   "meta": {
     "title": "Redis",
     "createdAt": "2026-08-16T06:19:05.514Z",
-    "updatedAt": "2026-10-26T10:29:11.495Z"
+    "updatedAt": "2026-10-26T10:32:44.622Z"
   },
   "activeCanvasId": "main",
   "canvases": {
@@ -15,7 +15,7 @@
         "tx": -214.46485057414645,
         "ty": -3543.494117208328,
         "inspectorWidth": 709,
-        "inspectorHeight": 1207.727294921875
+        "inspectorHeight": 638.6364135742188
       },
       "nodes": [
         {
