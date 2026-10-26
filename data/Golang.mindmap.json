@@ -3,7 +3,7 @@
   "meta": {
     "title": "Golang",
     "createdAt": "2026-08-16T06:19:04.102Z",
-    "updatedAt": "2026-10-26T02:56:59.960Z"
+    "updatedAt": "2026-10-26T03:57:43.445Z"
   },
   "activeCanvasId": "main",
   "canvases": {
@@ -11,10 +11,10 @@
       "id": "main",
       "title": "主画布",
       "viewport": {
-        "scale": 0.16166279573603365,
-        "tx": 113.50823284104175,
-        "ty": -312.4508484472432,
-        "inspectorWidth": 970.1427917480469,
+        "scale": 0.4526405029351501,
+        "tx": 135.43809715793202,
+        "ty": -928.9023009962539,
+        "inspectorWidth": 588.428466796875,
         "inspectorHeight": 344
       },
       "nodes": [
