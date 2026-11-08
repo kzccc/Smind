@@ -39,6 +39,7 @@ const ZOOM_DEFAULT_MIN_SCALE = 0.08;
 const ZOOM_ABSOLUTE_MIN_SCALE = 0.01;
 const ZOOM_MAX_SCALE = 2.4;
 const FIT_VIEW_PADDING = 120;
+const NODE_TOOLTIP_LIMIT = 240;
 const CANVAS_MAIN_ID = "main";
 const CANVAS_SUMMARY_ID = "summary";
 const CANVAS_TITLES = {
@@ -70,11 +71,13 @@ const state = {
   projectCanvases: null,
   activeCanvasId: CANVAS_MAIN_ID,
   canvasHistories: new Map(),
-  currentFileName: "default.mindmap.json",
+  currentFileName: "A-default.json",
   fileHandle: null,
   fileFingerprint: null,
   saveConflict: false,
   dataDirectoryHandle: null,
+  dataServerReady: false,
+  dataServerFiles: null,
   windowSessionId: "",
   autosaveTimer: null,
   dirty: false,
@@ -83,6 +86,8 @@ const state = {
   saveAgainAfterCurrent: false,
   saveRevision: 0,
   committedRevision: 0,
+  lastSaveMs: 0,
+  lastWriteBytes: 0,
   suppressAutosave: true,
   detailUndoStacks: new Map(),
   restoringDetail: false,
@@ -236,6 +241,14 @@ const els = {
   openFileDialog: document.querySelector("#openFileDialog"),
   openFileList: document.querySelector("#openFileList"),
   openFileError: document.querySelector("#openFileError"),
+  openFileSearch: document.querySelector("#openFileSearch"),
+  openFileSource: document.querySelector("#openFileSource"),
+  openFileDir: document.querySelector("#openFileDir"),
+  closeOpenFile: document.querySelector("#closeOpenFile"),
+  cancelOpenFile: document.querySelector("#cancelOpenFile"),
+  currentFile: document.querySelector("#currentFile"),
+  newFileDialogTitle: document.querySelector("#newFileDialogTitle"),
+  confirmNewFile: document.querySelector("#confirmNewFile"),
   shell: document.querySelector("#canvasShell"),
   canvasSwitcher: document.querySelector("#canvasSwitcher"),
   edgeSvg: document.querySelector("#edgeSvg"),
@@ -729,6 +742,7 @@ function toggleInspectorExpanded() {
 function setSaveStatus(text, status = "saved") {
   els.saveStatus.textContent = text;
   els.saveStatus.dataset.state = status;
+  refreshFileChip();
 }
 
 function canvasTitle(id) {
@@ -781,7 +795,7 @@ function currentProjectDocument() {
     activeCanvasId: state.activeCanvasId,
     canvases: state.projectCanvases,
     meta: state.projectMeta || {
-      title: state.currentFileName.replace(/\.mindmap\.json$|\.json$/i, "") || "未命名思维导图",
+      title: MindMapLogic.parseDataFileName(state.currentFileName).title || "未命名思维导图",
     },
   });
   state.projectMeta = project.meta;
@@ -863,14 +877,23 @@ function markDirty() {
   state.saveRevision += 1;
   setSaveStatus("未保存", "dirty");
   window.clearTimeout(state.autosaveTimer);
+  // 40-60 MB projects need ~2.5 s per write, so autosave waits for a real pause in
+  // the work instead of firing between two clicks. Ctrl+S still saves immediately.
+  const heavy = (state.lastWriteBytes || 0) >= HEAVY_PROJECT_BYTES;
+  const delay = heavy
+    ? 12000
+    : Math.min(8000, Math.max(800, Math.round((state.lastSaveMs || 0) * 1.5)));
   state.autosaveTimer = window.setTimeout(() => {
     saveNow();
-  }, 800);
+  }, delay);
 }
 
 const PROJECT_DB_NAME = "smind-storage";
 const LEGACY_PROJECT_DB_NAME = "mindmap-product-storage";
 const MAX_RECOVERY_HISTORY = 20;
+// Projects above this size already live in a real file; duplicating them into
+// IndexedDB on every keystroke is what made 40-60 MB maps feel frozen.
+const HEAVY_PROJECT_BYTES = 4 * 1024 * 1024;
 
 function sessionStorageKey(prefix) {
   return `${prefix}-${state.windowSessionId}`;
@@ -933,21 +956,26 @@ async function getStoredValue(key) {
   return legacyValue;
 }
 
-async function saveRecovery(project, fileName = state.currentFileName) {
+async function saveRecovery(project, fileName = state.currentFileName, options = {}) {
+  const heavy = Boolean(options.heavy);
   const snapshot = JSON.parse(JSON.stringify(project));
   const recovery = {
     savedAt: new Date().toISOString(),
-    fileName: String(fileName || "未命名.mindmap.json"),
+    fileName: String(fileName || "未命名.json"),
     project: snapshot,
   };
   const perFileKey = `recovery-project-file-${encodeURIComponent(recovery.fileName)}`;
-  await Promise.all([
+  const writes = [
     putStoredValue(sessionStorageKey("recovery-project"), recovery),
+    putStoredValue(perFileKey, recovery),
+  ];
+  if (!heavy) {
     // Keep the legacy key for existing recovery data and older tooling. It is
     // never read while a window session is active, so windows remain isolated.
-    putStoredValue("recovery-project", recovery),
-    putStoredValue(perFileKey, recovery),
-  ]);
+    writes.push(putStoredValue("recovery-project", recovery));
+  }
+  await Promise.all(writes);
+  if (heavy) return;
   const verified = await readStoredValue(PROJECT_DB_NAME, perFileKey);
   if (!verified || verified.fileName !== recovery.fileName || JSON.stringify(verified.project) !== JSON.stringify(snapshot)) {
     throw new Error("恢复副本校验失败");
@@ -978,13 +1006,22 @@ function sameFileFingerprint(left, right) {
 }
 
 async function refreshFileFingerprint() {
+  if (state.fileHandle?.stat) {
+    try {
+      state.fileFingerprint = await state.fileHandle.stat();
+      return state.fileFingerprint;
+    } catch (error) {
+      state.fileFingerprint = null;
+      return null;
+    }
+  }
   if (!state.fileHandle?.getFile) return null;
   state.fileFingerprint = fileFingerprint(await state.fileHandle.getFile());
   return state.fileFingerprint;
 }
 
 async function getFileRecovery(fileName) {
-  const normalizedName = String(fileName || "未命名.mindmap.json");
+  const normalizedName = String(fileName || "未命名.json");
   return getStoredValue(`recovery-project-file-${encodeURIComponent(normalizedName)}`);
 }
 
@@ -992,7 +1029,7 @@ async function rememberFileHandle(fileHandle = state.fileHandle, fileName = stat
   if (!fileHandle) return;
   try {
     await putStoredValue(sessionStorageKey("file-handle"), {
-      fileName: String(fileName || "未命名.mindmap.json"),
+      fileName: String(fileName || "未命名.json"),
       handle: fileHandle,
     });
   } catch (error) {
@@ -1004,6 +1041,7 @@ async function rememberDataDirectoryHandle() {
   if (!state.dataDirectoryHandle) return;
   try {
     await putStoredValue(sessionStorageKey("data-directory-handle"), state.dataDirectoryHandle);
+    await putStoredValue("data-directory-handle", state.dataDirectoryHandle);
   } catch (error) {
     // The directory can still be chosen again if this browser cannot persist handles.
   }
@@ -1013,7 +1051,8 @@ function normalizeNewProjectFileName(value) {
   const baseName = String(value || "").trim();
   if (!baseName) throw new Error("请输入文件名称");
   if (/[\\/:*?"<>|]/.test(baseName)) throw new Error("文件名称不能包含路径或特殊字符");
-  return /\.mindmap\.json$/i.test(baseName) ? baseName : `${baseName}.mindmap.json`;
+  if (/\.json$/i.test(baseName)) return baseName;
+  return `${baseName}.json`;
 }
 
 async function ensureDataDirectoryHandle() {
@@ -1048,21 +1087,553 @@ async function ensureDataDirectoryHandle() {
   return directory;
 }
 
+/* --------------------------------------------------------------------------
+ * data/ 目录浏览器
+ * 打开面板优先读取本地数据服务（tools/git-push-server.js）给出的 data/ 清单，
+ * 其次使用已授权的 data 目录句柄，两者都不可用时提示手动选择目录或文件。
+ * ------------------------------------------------------------------------ */
+
+const DATA_SERVER_ORIGIN = "http://127.0.0.1:32123";
+const DATA_SERVER_PROBE_TIMEOUT = 1800;
+const DATA_DEFAULT_CANDIDATES = ["A-default.json", "default.json", "default.mindmap.json"];
+const DATA_FILE_PATTERN = /\.json$/i;
+const CATEGORY_HUES = [214, 158, 262, 22, 330, 190, 96, 288, 42, 172];
+
+const openFileView = {
+  source: { kind: "idle", files: [] },
+  groups: [],
+  flat: [],
+  activeIndex: 0,
+  query: "",
+  loading: false,
+};
+
+function dataServerOrigin() {
+  if (/^https?:$/i.test(window.location.protocol) && window.location.port === "32123") {
+    return window.location.origin;
+  }
+  return DATA_SERVER_ORIGIN;
+}
+
+async function dataServerRequest(pathname, options = {}) {
+  if (window.__smindDisableDataServer) throw new Error("本地数据服务已关闭");
+  const { timeout = 15000, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(`${dataServerOrigin()}${pathname}`, {
+      cache: "no-store",
+      signal: controller.signal,
+      ...fetchOptions,
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      throw new Error(detail.trim() || `HTTP ${response.status}`);
+    }
+    return response;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+async function probeDataServer() {
+  try {
+    const response = await dataServerRequest("/api/data", { timeout: DATA_SERVER_PROBE_TIMEOUT });
+    const payload = await response.json();
+    if (!payload || payload.ok !== true || !Array.isArray(payload.files)) throw new Error("数据目录响应异常");
+    state.dataServerReady = true;
+    state.dataServerFiles = payload.files;
+    return payload.files;
+  } catch (error) {
+    state.dataServerReady = false;
+    state.dataServerFiles = null;
+    return null;
+  }
+}
+
+function createServerFileHandle(fileName) {
+  const name = String(fileName || "");
+  return {
+    kind: "file",
+    name,
+    serverBacked: true,
+    verifyAfterWrite: false,
+    queryPermission: async () => "granted",
+    requestPermission: async () => "granted",
+    async stat() {
+      const response = await dataServerRequest(`/api/stat?name=${encodeURIComponent(name)}`, { timeout: 8000 });
+      const payload = await response.json();
+      if (!payload || payload.ok !== true) throw new Error(payload?.error || "读取文件信息失败");
+      return { name, size: Number(payload.size) || 0, lastModified: Number(payload.mtime) || 0 };
+    },
+    async getFile() {
+      const response = await dataServerRequest(`/data/${encodeURIComponent(name)}`, { timeout: 120000 });
+      const text = await response.text();
+      return new File([text], name, { type: "application/json", lastModified: Date.now() });
+    },
+    async createWritable() {
+      const chunks = [];
+      return {
+        async write(chunk) {
+          chunks.push(chunk);
+        },
+        async close() {
+          const body = chunks.every((chunk) => typeof chunk === "string")
+            ? chunks.join("")
+            : new Blob(chunks);
+          const response = await dataServerRequest(`/api/save?name=${encodeURIComponent(name)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+            timeout: 180000,
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!payload || payload.ok !== true) throw new Error(payload?.error || "写入文件失败");
+        },
+      };
+    },
+  };
+}
+
+async function listDirectoryDataFiles(directory) {
+  const files = [];
+  if (!directory || !directory.entries) return files;
+  for await (const [name, handle] of directory.entries()) {
+    if (handle.kind !== "file" || !DATA_FILE_PATTERN.test(name)) continue;
+    let size = 0;
+    let mtime = 0;
+    try {
+      const file = await handle.getFile();
+      size = file.size;
+      mtime = file.lastModified;
+    } catch (error) {
+      // A single unreadable file must not break the whole listing.
+    }
+    files.push({ name, size, mtime, handle });
+  }
+  return files;
+}
+
+async function restoreDataDirectoryHandle() {
+  const candidates = [state.dataDirectoryHandle];
+  try {
+    candidates.push(await getStoredValue(sessionStorageKey("data-directory-handle")));
+    candidates.push(await getStoredValue("data-directory-handle"));
+  } catch (error) {
+    // Ignore storage failures; the caller falls back to a manual picker.
+  }
+  for (const handle of candidates) {
+    if (!handle || !handle.queryPermission) continue;
+    try {
+      const permission = await handle.queryPermission({ mode: "readwrite" });
+      if (permission === "granted") {
+        state.dataDirectoryHandle = handle;
+        return handle;
+      }
+    } catch (error) {
+      // Try the next remembered handle.
+    }
+  }
+  return null;
+}
+
+async function collectOpenFileSource() {
+  const serverFiles = await probeDataServer();
+  if (serverFiles) return { kind: "server", files: serverFiles };
+  try {
+    const directory = await restoreDataDirectoryHandle();
+    if (directory) return { kind: "directory", files: await listDirectoryDataFiles(directory) };
+  } catch (error) {
+    // Fall through to the manual source panel.
+  }
+  return { kind: "none", files: [] };
+}
+
+function categoryHue(index) {
+  const position = Number.isFinite(index) ? Math.abs(Math.trunc(index)) : 0;
+  return CATEGORY_HUES[position % CATEGORY_HUES.length];
+}
+
+function categoryBadgeText(category) {
+  const text = String(category || "").trim();
+  if (!text || text === MindMapLogic.DATA_CATEGORY_FALLBACK) return "?";
+  if (/^[\x20-\x7e]+$/.test(text)) return text.slice(0, 2).toUpperCase();
+  return text.slice(0, 1);
+}
+
+function refreshFileChip() {
+  if (!els.currentFile) return;
+  const hasFile = Boolean(state.currentFileName);
+  els.currentFile.hidden = !hasFile;
+  if (!hasFile) return;
+  const parsed = MindMapLogic.parseDataFileName(state.currentFileName);
+  const category = els.currentFile.querySelector(".file-chip-category");
+  const title = els.currentFile.querySelector(".file-chip-title");
+  if (category) category.textContent = parsed.category;
+  if (title) title.textContent = parsed.title;
+  els.currentFile.dataset.category = parsed.category;
+  els.currentFile.dataset.dirty = String(Boolean(state.dirty));
+  els.currentFile.title = state.currentFileName;
+}
+
+function setOpenFileGroups() {
+  const files = openFileView.source?.files || [];
+  const filtered = MindMapLogic.filterDataGroups(MindMapLogic.groupDataFiles(files), openFileView.query);
+  openFileView.groups = filtered;
+  openFileView.flat = filtered.flatMap((group) => group.files.map((file) => ({ ...file, category: group.category })));
+  if (openFileView.activeIndex >= openFileView.flat.length) openFileView.activeIndex = 0;
+}
+
+function openFileSourceLabel() {
+  const kind = openFileView.source?.kind || "none";
+  if (kind === "server") return `data/ · 本地服务 ${dataServerOrigin().replace(/^https?:\/\//, "")}`;
+  if (kind === "directory") return "data/ · 已授权的本地目录";
+  if (kind === "loading") return "data/ · 读取中";
+  return "data/ · 未连接";
+}
+
+function createOpenFileSkeleton() {
+  const wrapper = document.createElement("div");
+  wrapper.className = "open-skeleton-grid";
+  for (let index = 0; index < 8; index += 1) {
+    const cell = document.createElement("div");
+    cell.className = "open-skeleton";
+    wrapper.append(cell);
+  }
+  return wrapper;
+}
+
+function createOpenFileEmpty() {
+  const source = openFileView.source || { kind: "none", files: [] };
+  const hasFiles = (source.files || []).length > 0;
+  const wrapper = document.createElement("div");
+  wrapper.className = "open-empty";
+
+  const icon = document.createElement("div");
+  icon.className = "open-empty-icon";
+  icon.textContent = hasFiles ? "⌕" : "⌘";
+
+  const title = document.createElement("p");
+  title.className = "open-empty-title";
+  const text = document.createElement("p");
+  text.className = "open-empty-text";
+
+  if (hasFiles) {
+    title.textContent = "没有匹配的文件";
+    text.textContent = `没有文件名或分类包含「${openFileView.query}」的思维导图，换个关键词试试。`;
+    wrapper.append(icon, title, text);
+    return wrapper;
+  }
+
+  if (source.kind === "server" || source.kind === "directory") {
+    title.textContent = "data/ 目录里还没有 JSON 文件";
+    text.textContent = "把思维导图保存到 data/ 目录，并按「分类-名称.json」命名，例如 A-网络协议.json，它就会自动出现在对应分类里。";
+  } else {
+    title.textContent = "还没连上 data/ 目录";
+    text.textContent = "本地数据服务没有运行，也没有已授权的目录。启动本地服务后可以直接列出 data/ 下的全部文件；也可以手动授权一次 data 目录，或直接选择单个文件。";
+  }
+  wrapper.append(icon, title, text);
+
+  const actions = document.createElement("div");
+  actions.className = "open-empty-actions";
+
+  const retry = document.createElement("button");
+  retry.type = "button";
+  retry.className = "btn btn-primary";
+  retry.textContent = "重试连接";
+  retry.addEventListener("click", () => reloadOpenFileSource());
+  actions.append(retry);
+
+  if (window.showDirectoryPicker) {
+    const pick = document.createElement("button");
+    pick.type = "button";
+    pick.className = "btn";
+    pick.textContent = "选择 data 目录";
+    pick.addEventListener("click", chooseDataDirectoryFromDialog);
+    actions.append(pick);
+  }
+
+  if (window.showOpenFilePicker || els.fileInput) {
+    const manual = document.createElement("button");
+    manual.type = "button";
+    manual.className = "btn btn-quiet";
+    manual.textContent = "手动选择文件";
+    manual.addEventListener("click", () => {
+      els.openFileDialog.close();
+      openProjectFileFallback();
+    });
+    actions.append(manual);
+  }
+
+  wrapper.append(actions);
+  return wrapper;
+}
+
+function createOpenFileCard(file, group) {
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "file-card";
+  card.dataset.name = file.name;
+  card.setAttribute("role", "option");
+  const index = openFileView.flat.findIndex((entry) => entry.name === file.name);
+  card.dataset.index = String(index);
+  const isCurrent = file.name === state.currentFileName;
+  card.classList.toggle("is-current", isCurrent);
+  card.setAttribute("aria-selected", String(isCurrent));
+  card.title = file.name;
+
+  const top = document.createElement("span");
+  top.className = "file-card-top";
+  const title = document.createElement("span");
+  title.className = "file-card-title";
+  title.textContent = file.title;
+  top.append(title);
+  if (isCurrent) {
+    const pill = document.createElement("span");
+    pill.className = "file-card-pill";
+    pill.textContent = "当前";
+    top.append(pill);
+  }
+
+  const meta = document.createElement("span");
+  meta.className = "file-card-meta";
+  const size = document.createElement("span");
+  size.textContent = MindMapLogic.formatFileSize(file.size);
+  const dot = document.createElement("span");
+  dot.className = "file-card-dot";
+  const time = document.createElement("span");
+  time.textContent = MindMapLogic.formatFileTime(file.mtime);
+  meta.append(size, dot, time);
+
+  card.append(top, meta);
+
+  if (file.legacy) {
+    const legacy = document.createElement("span");
+    legacy.className = "file-card-legacy";
+    legacy.textContent = "旧命名";
+    card.append(legacy);
+  }
+
+  card.addEventListener("click", () => openDataFile(file));
+  card.addEventListener("mouseenter", () => highlightOpenFile(index));
+  card.addEventListener("focus", () => highlightOpenFile(index));
+  return card;
+}
+
+function renderOpenFileList() {
+  if (!els.openFileList) return;
+  els.openFileList.replaceChildren();
+  els.openFileList.scrollTop = 0;
+  if (els.openFileError) els.openFileError.textContent = "";
+  if (els.openFileSource) {
+    els.openFileSource.textContent = openFileSourceLabel();
+    els.openFileSource.dataset.kind = openFileView.source?.kind || "none";
+  }
+  if (openFileView.loading) {
+    els.openFileList.append(createOpenFileSkeleton());
+    return;
+  }
+  if (!openFileView.groups.length) {
+    els.openFileList.append(createOpenFileEmpty());
+    return;
+  }
+  openFileView.groups.forEach((group, groupIndex) => {
+    const section = document.createElement("section");
+    section.className = "file-group";
+    section.dataset.category = group.category;
+    section.style.setProperty("--cat-hue", String(categoryHue(groupIndex)));
+
+    const head = document.createElement("header");
+    head.className = "file-group-head";
+    const badge = document.createElement("span");
+    badge.className = "file-group-badge";
+    badge.textContent = categoryBadgeText(group.category);
+    const name = document.createElement("h3");
+    name.className = "file-group-name";
+    name.textContent = group.category;
+    const count = document.createElement("span");
+    count.className = "file-group-count";
+    count.textContent = `${group.files.length} 个`;
+    const line = document.createElement("span");
+    line.className = "file-group-line";
+    head.append(badge, name, count, line);
+
+    const grid = document.createElement("div");
+    grid.className = "file-grid";
+    group.files.forEach((file) => grid.append(createOpenFileCard(file, group)));
+
+    section.append(head, grid);
+    els.openFileList.append(section);
+  });
+  const firstActive = openFileView.flat[openFileView.activeIndex];
+  if (firstActive) highlightOpenFile(openFileView.activeIndex);
+}
+
+function highlightOpenFile(index, options = {}) {
+  openFileView.activeIndex = index;
+  if (!els.openFileList) return;
+  els.openFileList.querySelectorAll(".file-card").forEach((card) => {
+    card.classList.toggle("is-active", Number(card.dataset.index) === index);
+  });
+  if (options.scroll) {
+    const active = els.openFileList.querySelector(`.file-card[data-index="${index}"]`);
+    if (active && active.scrollIntoView) active.scrollIntoView({ block: "nearest" });
+  }
+}
+
+function moveOpenFileActive(delta) {
+  const total = openFileView.flat.length;
+  if (!total) return;
+  const next = ((openFileView.activeIndex + delta) % total + total) % total;
+  highlightOpenFile(next, { scroll: true });
+}
+
+async function reloadOpenFileSource() {
+  openFileView.loading = true;
+  renderOpenFileList();
+  openFileView.source = await collectOpenFileSource();
+  openFileView.loading = false;
+  setOpenFileGroups();
+  renderOpenFileList();
+}
+
+async function openDataFile(entry) {
+  if (!entry) return;
+  if (els.openFileError) els.openFileError.textContent = "";
+  try {
+    let handle = null;
+    let file = null;
+    if (openFileView.source?.kind === "server") {
+      handle = createServerFileHandle(entry.name);
+      file = await handle.getFile();
+    } else if (entry.handle) {
+      handle = entry.handle;
+      file = await handle.getFile();
+    } else {
+      throw new Error("无法读取这个文件");
+    }
+    // Big maps take a moment to parse; close the panel first and show progress so
+    // the wait does not look like a frozen window.
+    const heavy = Number(file.size) >= HEAVY_PROJECT_BYTES;
+    setSaveStatus("打开中…", "saving");
+    await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+    if (heavy) {
+      els.openFileDialog.close();
+      await loadProjectFromFile(file, handle);
+      return;
+    }
+    await loadProjectFromFile(file, handle);
+    els.openFileDialog.close();
+  } catch (error) {
+    if (els.openFileDialog.open && els.openFileError) {
+      els.openFileError.textContent = error.message || "打开失败";
+    } else {
+      setSaveStatus(error.message ? `打开失败：${error.message}` : "打开失败", "error");
+    }
+  }
+}
+
+async function chooseDataDirectoryFromDialog() {
+  try {
+    if (!window.showDirectoryPicker) throw new Error("当前浏览器不支持选择目录");
+    const directory = await window.showDirectoryPicker({
+      id: "smind-data-directory",
+      mode: "readwrite",
+      startIn: state.dataDirectoryHandle || undefined,
+    });
+    state.dataDirectoryHandle = directory;
+    await rememberDataDirectoryHandle();
+    state.dataServerReady = false;
+    openFileView.loading = true;
+    renderOpenFileList();
+    openFileView.source = { kind: "directory", files: await listDirectoryDataFiles(directory) };
+    openFileView.loading = false;
+    setOpenFileGroups();
+    renderOpenFileList();
+  } catch (error) {
+    if (error.name === "AbortError") return;
+    if (els.openFileError) els.openFileError.textContent = error.message || "选择目录失败";
+  }
+}
+
+async function openProjectFileFallback() {
+  try {
+    let dataDirectory = null;
+    try {
+      dataDirectory = await ensureDataDirectoryHandle();
+    } catch (error) {
+      dataDirectory = state.dataDirectoryHandle;
+    }
+    if (window.showOpenFilePicker) {
+      const [handle] = await window.showOpenFilePicker({
+        multiple: false,
+        startIn: dataDirectory || undefined,
+      });
+      await loadProjectFromFile(await handle.getFile(), handle);
+      return;
+    }
+    els.fileInput.value = "";
+    els.fileInput.click();
+  } catch (error) {
+    if (error.name !== "AbortError") setSaveStatus("打开失败", "error");
+  }
+}
+
+async function acquireProjectFileHandle(fileName, options = {}) {
+  if (state.dataServerReady) {
+    let exists = false;
+    try {
+      const response = await dataServerRequest(`/api/exists?name=${encodeURIComponent(fileName)}`, { timeout: 6000 });
+      const payload = await response.json();
+      exists = Boolean(payload?.exists);
+    } catch (error) {
+      throw new Error(error.message || "本地数据服务不可用");
+    }
+    if (exists && !options.overwrite) throw new Error("同名文件已存在，请更换名称");
+    return createServerFileHandle(fileName);
+  }
+  const directory = await ensureDataDirectoryHandle();
+  if (!options.overwrite) {
+    let exists = false;
+    try {
+      await directory.getFileHandle(fileName);
+      exists = true;
+    } catch (error) {
+      if (error.name !== "NotFoundError") throw error;
+    }
+    if (exists) throw new Error("同名文件已存在，请更换名称");
+  }
+  return directory.getFileHandle(fileName, { create: true });
+}
+
+function suggestedSaveAsFileName() {
+  const parsed = MindMapLogic.parseDataFileName(state.currentFileName || "");
+  const hasCategory = parsed.category && parsed.category !== MindMapLogic.DATA_CATEGORY_FALLBACK;
+  const prefix = hasCategory ? `${parsed.category}-` : "";
+  return `${prefix}${parsed.title || "未命名"}-副本.json`;
+}
+
 function showNewFileError(message = "") {
   els.newFileError.textContent = message;
 }
 
-function openNewProjectDialog() {
+function openNewProjectDialog(options = {}) {
   if (!els.newFileDialog?.showModal) {
     setSaveStatus("当前浏览器不支持新建窗口", "error");
     return;
   }
+  const mode = options && options.mode === "saveAs" ? "saveAs" : "new";
+  els.newFileDialog.dataset.mode = mode;
+  if (els.newFileDialogTitle) {
+    els.newFileDialogTitle.textContent = mode === "saveAs" ? "另存为新的文件" : "新建思维导图";
+  }
+  if (els.confirmNewFile) els.confirmNewFile.textContent = mode === "saveAs" ? "保存副本" : "确定";
   showNewFileError();
-  els.newFileName.value = "";
+  els.newFileName.value = mode === "saveAs" ? suggestedSaveAsFileName() : "";
   els.newFileDialog.showModal();
   els.newFileName.focus();
+  els.newFileName.select?.();
 }
-
 async function flushPendingSave() {
   window.clearTimeout(state.autosaveTimer);
   state.autosaveTimer = null;
@@ -1071,37 +1642,36 @@ async function flushPendingSave() {
 }
 
 async function createNewProjectFile() {
-  let fileName;
+  const mode = els.newFileDialog?.dataset.mode === "saveAs" ? "saveAs" : "new";
   try {
-    fileName = normalizeNewProjectFileName(els.newFileName.value);
+    const fileName = normalizeNewProjectFileName(els.newFileName.value);
     await flushPendingSave();
-    const directory = await ensureDataDirectoryHandle();
-    try {
-      await directory.getFileHandle(fileName);
-      showNewFileError("同名文件已存在，请更换名称");
-      return;
-    } catch (error) {
-      if (error.name !== "NotFoundError") throw error;
-    }
-    const fileHandle = await directory.getFileHandle(fileName, { create: true });
-    const title = fileName.replace(/\.mindmap\.json$/i, "");
-    const project = MindMapLogic.createProjectDocument({ meta: { title } });
-    state.fileHandle = fileHandle;
+    const handle = await acquireProjectFileHandle(fileName);
+    const title = MindMapLogic.parseDataFileName(fileName).title;
+    state.fileHandle = handle;
     state.currentFileName = fileName;
-    applyProject(project, { fitView: true });
-    await writeProjectToHandle(currentProjectDocument());
-    await saveRecovery(currentProjectDocument());
+    state.fileFingerprint = null;
+    state.saveConflict = false;
+    if (mode === "saveAs") {
+      state.projectMeta = { ...(state.projectMeta || {}), title };
+    } else {
+      applyProject(MindMapLogic.createProjectDocument({ meta: { title } }), { fitView: true });
+      state.fileFingerprint = null;
+    }
+    await writeProjectToHandle(currentProjectDocument(), handle);
+    await saveRecovery(currentProjectDocument(), state.currentFileName, {
+      heavy: (state.lastWriteBytes || 0) >= HEAVY_PROJECT_BYTES,
+    });
     await rememberFileHandle();
     state.dirty = false;
-    setSaveStatus("已新建", "saved");
+    setSaveStatus(mode === "saveAs" ? "已另存" : "已新建", "saved");
     els.newFileDialog.close();
   } catch (error) {
     if (error.name === "AbortError") return;
-    showNewFileError(error.message || "新建失败");
+    showNewFileError(error.message || (mode === "saveAs" ? "另存失败" : "新建失败"));
   }
 }
-
-async function writeProjectToHandle(project, fileHandle = state.fileHandle) {
+async function writeProjectToHandle(project, fileHandle = state.fileHandle, preSerialized = null) {
   if (!fileHandle) return false;
   if (fileHandle.queryPermission) {
     const permission = await fileHandle.queryPermission({ mode: "readwrite" });
@@ -1110,21 +1680,24 @@ async function writeProjectToHandle(project, fileHandle = state.fileHandle) {
       if (requested !== "granted") return false;
     }
   }
-  if (fileHandle === state.fileHandle && state.fileFingerprint && fileHandle.getFile) {
-    const currentFingerprint = fileFingerprint(await fileHandle.getFile());
+  if (fileHandle === state.fileHandle && state.fileFingerprint && (fileHandle.getFile || fileHandle.stat)) {
+    const currentFingerprint = fileHandle.stat
+      ? await fileHandle.stat()
+      : fileFingerprint(await fileHandle.getFile());
     if (!sameFileFingerprint(state.fileFingerprint, currentFingerprint)) {
       const error = new Error("文件已被其他窗口或程序修改");
       error.code = "FILE_CONFLICT";
       throw error;
     }
   }
-  const serialized = JSON.stringify(project, null, 2);
+  const serialized = typeof preSerialized === "string" ? preSerialized : JSON.stringify(project, null, 2);
+  state.lastWriteBytes = serialized.length;
   const writable = await fileHandle.createWritable();
   await writable.write(serialized);
   await writable.close();
   // A successful close is not enough protection on every filesystem provider.
   // Read back when possible and reject a truncated or stale write.
-  if (fileHandle.getFile) {
+  if (fileHandle.getFile && fileHandle.verifyAfterWrite !== false) {
     const written = await fileHandle.getFile();
     const actual = await written.text();
     if (actual !== serialized) throw new Error("文件写入校验失败，已保留恢复副本");
@@ -1140,16 +1713,23 @@ async function saveNow(options = {}) {
     state.saveAgainAfterCurrent = true;
     return state.savePromise;
   }
-  const project = JSON.parse(JSON.stringify(currentProjectDocument()));
+  const project = currentProjectDocument();
   const fileHandle = state.fileHandle;
   const fileName = state.currentFileName;
   const revision = state.saveRevision;
+  const startedAt = performance.now();
+  let heavy = false;
   state.saving = true;
   setSaveStatus("保存中", "saving");
   state.savePromise = (async () => {
     try {
-      const wroteFile = await writeProjectToHandle(project, fileHandle);
-      await saveRecovery(project, fileName);
+      // Serialize once and share the text with the file write.
+      const serialized = JSON.stringify(project, null, 2);
+      heavy = serialized.length >= HEAVY_PROJECT_BYTES;
+      const wroteFile = await writeProjectToHandle(project, fileHandle, serialized);
+      // Rebuild the recovery snapshot from the exact text that was written, so it
+      // can never drift from the file while the write was in flight.
+      if (!heavy || !wroteFile) await saveRecovery(JSON.parse(serialized), fileName, { heavy });
       const fileWriteRequired = Boolean(fileHandle) || Boolean(options.requireFile);
       if (!wroteFile && fileWriteRequired) {
         setSaveStatus("文件写入失败，已保留恢复副本", "error");
@@ -1168,7 +1748,7 @@ async function saveNow(options = {}) {
         state.saveConflict = true;
         state.dirty = true;
         try {
-          await saveRecovery(project, fileName);
+          await saveRecovery(project, fileName, { heavy });
           setSaveStatus("文件已被其他窗口修改，已保留恢复副本", "error");
         } catch (recoveryError) {
           setSaveStatus("文件冲突，恢复副本保存失败", "error");
@@ -1176,7 +1756,7 @@ async function saveNow(options = {}) {
         return;
       }
       try {
-        await saveRecovery(project, fileName);
+        await saveRecovery(project, fileName, { heavy });
         setSaveStatus("已保存恢复副本", "dirty");
       } catch (recoveryError) {
         setSaveStatus("保存失败", "error");
@@ -1184,6 +1764,7 @@ async function saveNow(options = {}) {
     } finally {
       state.saving = false;
       state.savePromise = null;
+      state.lastSaveMs = Math.round(performance.now() - startedAt);
       if (state.saveAgainAfterCurrent) {
         state.saveAgainAfterCurrent = false;
         markDirty();
@@ -1213,68 +1794,62 @@ async function loadProjectFromFile(file, handle = null) {
     // A recovery read failure must not prevent opening a valid file.
   }
   state.fileHandle = handle;
-  state.currentFileName = file.name || "未命名.mindmap.json";
-  state.fileFingerprint = fileFingerprint(file);
+  state.currentFileName = file.name || "未命名.json";
+  if (handle && typeof handle.stat === "function") {
+    try {
+      state.fileFingerprint = await handle.stat();
+    } catch (error) {
+      state.fileFingerprint = fileFingerprint(file);
+    }
+  } else {
+    state.fileFingerprint = fileFingerprint(file);
+  }
   state.saveConflict = false;
+  // Remember how big this project is so autosave throttles from the first edit on.
+  state.lastWriteBytes = Number(file.size) || 0;
   applyProject(project);
   setSaveStatus("已打开", "saved");
-  await saveRecovery(currentProjectDocument());
+  // A file that is already on disk does not need a second multi-megabyte copy in
+  // IndexedDB; only keep recovery for files without a writable handle.
+  const heavy = Number(file.size) >= HEAVY_PROJECT_BYTES;
+  if (!heavy || !handle) await saveRecovery(currentProjectDocument(), state.currentFileName, { heavy });
   await rememberFileHandle();
 }
 
 async function openProjectFile() {
-  try {
-    const dataDirectory = await ensureDataDirectoryHandle();
-    if (dataDirectory?.entries && els.openFileDialog?.showModal) {
-      const files = [];
-      for await (const [name, handle] of dataDirectory.entries()) {
-        if (handle.kind === "file" && /\.json$/i.test(name)) files.push({ name, handle });
-      }
-      files.sort((left, right) => left.name.localeCompare(right.name, "zh-CN"));
-      els.openFileList.replaceChildren();
-      els.openFileError.textContent = files.length ? "" : "data 目录中没有 JSON 文件";
-      for (const entry of files) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.textContent = entry.name;
-        button.addEventListener("click", async () => {
-          try {
-            const file = await entry.handle.getFile();
-            await loadProjectFromFile(file, entry.handle);
-            els.openFileDialog.close();
-          } catch (error) {
-            els.openFileError.textContent = error.message || "打开失败";
-          }
-        });
-        els.openFileList.append(button);
-      }
-      els.openFileDialog.showModal();
-      return;
-    }
-    if (window.showOpenFilePicker) {
-      const [handle] = await window.showOpenFilePicker({ multiple: false, startIn: dataDirectory });
-      await loadProjectFromFile(await handle.getFile(), handle);
-      return;
-    }
-    els.fileInput.value = "";
-    els.fileInput.click();
-  } catch (error) {
-    if (error.name !== "AbortError") setSaveStatus("打开失败", "error");
+  if (!els.openFileDialog?.showModal) {
+    await openProjectFileFallback();
+    return;
   }
+  openFileView.loading = true;
+  openFileView.query = "";
+  openFileView.activeIndex = 0;
+  openFileView.groups = [];
+  openFileView.flat = [];
+  openFileView.source = { kind: "loading", files: [] };
+  if (els.openFileSearch) els.openFileSearch.value = "";
+  renderOpenFileList();
+  if (!els.openFileDialog.open) els.openFileDialog.showModal();
+  window.setTimeout(() => els.openFileSearch?.focus(), 40);
+  // Nothing may block the panel here: pending edits are flushed right before the
+  // chosen file actually replaces the canvas (see loadProjectFromFile).
+  openFileView.source = await collectOpenFileSource();
+  openFileView.loading = false;
+  setOpenFileGroups();
+  renderOpenFileList();
 }
-
 function downloadProject(project) {
   const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = state.currentFileName.endsWith(".json") ? state.currentFileName : "未命名.mindmap.json";
+  link.download = state.currentFileName.endsWith(".json") ? state.currentFileName : "未命名.json";
   link.click();
   URL.revokeObjectURL(url);
 }
 
 function exportMarkdownFile() {
-  const title = state.projectMeta?.title || state.currentFileName.replace(/\.mindmap\.json$|\.json$/i, "");
+  const title = state.projectMeta?.title || MindMapLogic.parseDataFileName(state.currentFileName).title;
   const markdown = MindMapLogic.projectToMarkdown(nodes, title || "未命名思维导图");
   const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -1312,11 +1887,20 @@ async function pushRepository() {
 
 async function saveAsProjectFile() {
   const project = currentProjectDocument();
+  if ((state.dataServerReady || await probeDataServer()) && els.newFileDialog?.showModal) {
+    openNewProjectDialog({ mode: "saveAs" });
+    return;
+  }
   try {
     if (window.showSaveFilePicker) {
-      const dataDirectory = await ensureDataDirectoryHandle();
+      let dataDirectory = state.dataDirectoryHandle;
+      try {
+        dataDirectory = await ensureDataDirectoryHandle();
+      } catch (error) {
+        dataDirectory = state.dataDirectoryHandle;
+      }
       const handle = await window.showSaveFilePicker({
-        suggestedName: state.currentFileName || "未命名.mindmap.json",
+        suggestedName: suggestedSaveAsFileName(),
         types: [{
           description: "Mind Map Project",
           accept: {
@@ -1324,11 +1908,13 @@ async function saveAsProjectFile() {
           },
         }],
         excludeAcceptAllOption: false,
-        startIn: dataDirectory,
+        startIn: dataDirectory || undefined,
       });
       state.fileHandle = handle;
-      state.currentFileName = handle.name || state.currentFileName;
+      state.fileFingerprint = null;
+      state.currentFileName = handle.name || suggestedSaveAsFileName();
       await saveNow({ requireFile: true });
+      refreshFileChip();
       return;
     }
     downloadProject(project);
@@ -1338,34 +1924,52 @@ async function saveAsProjectFile() {
     if (error.name !== "AbortError") setSaveStatus("另存失败", "error");
   }
 }
-
 async function loadDefaultProject() {
   try {
     const recovery = await getStoredValue(sessionStorageKey("recovery-project"))
       || await getStoredValue("recovery-project");
     if (recovery?.project) {
-      state.currentFileName = recovery.fileName || "恢复项目.mindmap.json";
+      state.currentFileName = recovery.fileName || "A-default.json";
       applyProject(recovery.project);
       setSaveStatus("已恢复自动保存", "saved");
       return;
     }
   } catch (error) {
-    // Continue to the separated default data file.
+    // Fall through to the bundled data file.
   }
-  try {
-    const response = await fetch("../data/default.mindmap.json", { cache: "no-store" });
-    if (!response.ok) throw new Error(`default data ${response.status}`);
-    const project = await response.json();
-    state.currentFileName = "default.mindmap.json";
-    applyProject(project, { fitView: true });
-    setSaveStatus("自动保存", "saved");
-    await saveRecovery(currentProjectDocument());
-  } catch (error) {
-    applyProject(currentProjectDocument(), { fitView: true });
-    setSaveStatus("自动保存", "saved");
+  if (!state.dataServerReady) await probeDataServer();
+  if (state.dataServerReady) {
+    const names = (state.dataServerFiles || []).map((file) => String(file.name));
+    const preferred = DATA_DEFAULT_CANDIDATES.find((candidate) => (
+      names.some((name) => name.toLowerCase() === candidate.toLowerCase())
+    )) || names.find((name) => /(^|[-－–—])default(\.json)?$/i.test(name));
+    if (preferred) {
+      try {
+        const handle = createServerFileHandle(preferred);
+        await loadProjectFromFile(await handle.getFile(), handle);
+        return;
+      } catch (error) {
+        // A broken default project must not block startup.
+      }
+    }
   }
+  for (const candidate of DATA_DEFAULT_CANDIDATES) {
+    try {
+      const response = await fetch(`../data/${candidate}`, { cache: "no-store" });
+      if (!response.ok) continue;
+      const project = await response.json();
+      state.currentFileName = candidate;
+      applyProject(project, { fitView: true });
+      setSaveStatus("自动保存", "saved");
+      await saveRecovery(currentProjectDocument());
+      return;
+    } catch (error) {
+      // Try the next candidate name.
+    }
+  }
+  applyProject(currentProjectDocument(), { fitView: true });
+  setSaveStatus("自动保存", "saved");
 }
-
 function setMode(mode) {
   state.mode = mode;
   els.shell.classList.toggle("select-mode", mode === "select");
@@ -2621,7 +3225,11 @@ function updateNodeElement(node) {
   item.style.top = `${node.y}px`;
   item.style.width = `${node.w}px`;
   item.style.height = `${node.h}px`;
-  item.title = node.detail || node.text;
+  // Rich text can be megabytes long; never push the whole thing into a tooltip
+  // attribute on every render.
+  const hint = node.detail || node.text || "";
+  const tooltip = hint.length > NODE_TOOLTIP_LIMIT ? `${hint.slice(0, NODE_TOOLTIP_LIMIT)}…` : hint;
+  if (item.title !== tooltip) item.title = tooltip;
   const title = item.querySelector(".node-title");
   if (title) {
     if (state.editingId !== node.id && title.textContent !== node.text) title.textContent = node.text;
@@ -3058,6 +3666,7 @@ function beginActiveTitleEdit() {
 }
 
 function onKeyDown(event) {
+  if (event.target instanceof Element && event.target.closest("dialog")) return;
   if (isDetailEditorActive() && handleDetailBlockArrowNavigation(event)) return;
   if (isDetailEditorActive() && deleteEmptyDetailBlock(event)) return;
   if (isDetailEditorActive() && insertLineInsideTitleBlock(event)) return;
@@ -3212,9 +3821,50 @@ els.detailFontSize.addEventListener("input", () => {
   applyDetailFontSize(Number(els.detailFontSize.value));
 });
 els.openFile.addEventListener("click", openProjectFile);
-els.newFile?.addEventListener("click", openNewProjectDialog);
+els.newFile?.addEventListener("click", () => openNewProjectDialog());
 els.cancelNewFile?.addEventListener("click", () => els.newFileDialog.close());
-els.openFileDialog?.addEventListener("close", () => els.openFileList?.replaceChildren());
+els.cancelOpenFile?.addEventListener("click", () => els.openFileDialog.close());
+els.closeOpenFile?.addEventListener("click", () => els.openFileDialog?.close());
+els.openFileDir?.addEventListener("click", chooseDataDirectoryFromDialog);
+els.openFileSearch?.addEventListener("input", () => {
+  // Rebuilding the grid on every keystroke is wasted work; wait for a short pause
+  // and then only redraw when the query actually changed.
+  window.clearTimeout(openFileView.searchTimer);
+  openFileView.searchTimer = window.setTimeout(() => {
+    const query = els.openFileSearch.value;
+    if (query === openFileView.query) return;
+    openFileView.query = query;
+    setOpenFileGroups();
+    renderOpenFileList();
+  }, 90);
+});
+els.openFileDialog?.addEventListener("keydown", (event) => {
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    moveOpenFileActive(1);
+    return;
+  }
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    moveOpenFileActive(-1);
+    return;
+  }
+  if (event.key === "Enter") {
+    const target = event.target;
+    if (target instanceof Element && target.closest("button") && !target.closest(".file-card")) return;
+    const entry = openFileView.flat[openFileView.activeIndex];
+    if (!entry) return;
+    event.preventDefault();
+    openDataFile(entry);
+  }
+});
+els.openFileDialog?.addEventListener("close", () => {
+  els.openFileList?.replaceChildren();
+  openFileView.loading = false;
+  openFileView.query = "";
+  openFileView.groups = [];
+  openFileView.flat = [];
+});
 els.newFileForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   await createNewProjectFile();
@@ -3313,11 +3963,13 @@ async function bootstrap() {
   sessionStorage.setItem("smind-window-session", state.windowSessionId);
   setInspectorWidth(state.inspectorWidth);
   setMode("pan");
+  refreshFileChip();
   try {
     await navigator.storage?.persist?.();
   } catch (error) {
     // Best-effort only; IndexedDB recovery still works without persistent quota.
   }
+  await probeDataServer();
   let loadedRememberedFile = false;
   try {
     const stored = await getStoredValue(sessionStorageKey("file-handle"));
@@ -3325,8 +3977,7 @@ async function bootstrap() {
       state.fileHandle = stored.handle;
       state.currentFileName = stored.fileName || state.currentFileName;
       try {
-        const latestFile = await state.fileHandle.getFile();
-        await loadProjectFromFile(latestFile, state.fileHandle);
+        await loadProjectFromFile(await state.fileHandle.getFile(), state.fileHandle);
         loadedRememberedFile = true;
       } catch (error) {
         // Fall back to the recovery copy when the file moved or permission expired.
@@ -3341,9 +3992,10 @@ async function bootstrap() {
       || await getStoredValue("data-directory-handle");
     if (directoryHandle) state.dataDirectoryHandle = directoryHandle;
   } catch (error) {
-    // The new-file flow will ask for the directory again when needed.
+    // The open dialog asks for the directory again when needed.
   }
   if (!loadedRememberedFile) await loadDefaultProject();
+  refreshFileChip();
 }
 
 bootstrap();

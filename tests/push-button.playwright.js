@@ -12,6 +12,7 @@ async function run() {
   });
   const page = await context.newPage();
   await page.addInitScript(() => {
+    window.__smindDisableDataServer = true;
     window.__pushRequests = 0;
     window.__alerts = [];
     window.alert = (message) => window.__alerts.push(String(message));

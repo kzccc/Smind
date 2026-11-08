@@ -102,7 +102,9 @@
     const id = String(input.id || fallback.id || CANVAS_MAIN_ID);
     const title = String(input.title || fallback.title || CANVAS_TITLES[id] || "画布");
     const inputNodes = Array.isArray(input.nodes) ? input.nodes : [];
-    const nodes = (inputNodes.length > 0 ? deepClone(inputNodes) : [defaultCanvasNode(id, title)])
+    // normalizeNode already rebuilds every node and copies its children array, so
+    // a JSON deep clone here only duplicated megabytes of rich text on every save.
+    const nodes = (inputNodes.length > 0 ? inputNodes : [defaultCanvasNode(id, title)])
       .map(normalizeNode);
     const nodeIds = new Set(nodes.map((node) => node.id));
     nodes.forEach((node) => {
@@ -536,6 +538,148 @@
     return true;
   }
 
+  const DATA_CATEGORY_FALLBACK = "未分类";
+  const DATA_NAME_SEPARATOR = /[-－–—]/;
+
+  function stripProjectExtension(fileName) {
+    const raw = String(fileName || "").trim();
+    let base = raw.replace(/\.json$/i, "");
+    const legacy = /\.mindmap$/i.test(base);
+    if (legacy) base = base.replace(/\.mindmap$/i, "");
+    return { raw, base, legacy };
+  }
+
+  function parseDataFileName(fileName) {
+    const { raw, base, legacy } = stripProjectExtension(fileName);
+    const separatorIndex = base.search(DATA_NAME_SEPARATOR);
+    let category = "";
+    let title = base;
+    if (separatorIndex > 0) {
+      category = base.slice(0, separatorIndex).trim();
+      title = base.slice(separatorIndex + 1).trim();
+    } else if (separatorIndex === 0) {
+      title = base.slice(1).trim();
+    }
+    const categoryName = category || DATA_CATEGORY_FALLBACK;
+    return {
+      fileName: raw,
+      base,
+      legacy,
+      category: categoryName,
+      categoryKey: categoryName.toLocaleLowerCase(),
+      title: title || base || raw || "未命名",
+    };
+  }
+
+  function isAsciiLabel(value) {
+    return /^[\x20-\x7e]*$/.test(String(value || ""));
+  }
+
+  function compareDataLabels(left, right) {
+    const leftAscii = isAsciiLabel(left);
+    const rightAscii = isAsciiLabel(right);
+    if (leftAscii !== rightAscii) return leftAscii ? -1 : 1;
+    return String(left).localeCompare(String(right), leftAscii ? "en" : "zh-CN", {
+      numeric: true,
+      sensitivity: "base",
+    });
+  }
+
+  function compareDataEntries(left, right) {
+    return compareDataLabels(left.title, right.title);
+  }
+
+  function groupDataFiles(files) {
+    const groups = new Map();
+    const list = Array.isArray(files) ? files : [];
+    list.forEach((file) => {
+      const record = typeof file === "string" ? { name: file } : (file || {});
+      const name = String(record.name || record.fileName || "").trim();
+      if (!name) return;
+      const parsed = parseDataFileName(name);
+      if (!groups.has(parsed.categoryKey)) {
+        groups.set(parsed.categoryKey, { key: parsed.categoryKey, category: parsed.category, files: [] });
+      }
+      groups.get(parsed.categoryKey).files.push({
+        name,
+        size: Number(record.size) || 0,
+        mtime: Number(record.mtime ?? record.lastModified) || 0,
+        handle: record.handle || null,
+        category: parsed.category,
+        categoryKey: parsed.categoryKey,
+        title: parsed.title,
+        legacy: parsed.legacy,
+      });
+    });
+    const result = Array.from(groups.values());
+    result.forEach((group) => group.files.sort(compareDataEntries));
+    const fallbackKey = DATA_CATEGORY_FALLBACK.toLocaleLowerCase();
+    result.sort((left, right) => {
+      const leftFallback = left.key === fallbackKey;
+      const rightFallback = right.key === fallbackKey;
+      if (leftFallback !== rightFallback) return leftFallback ? 1 : -1;
+      return compareDataLabels(left.category, right.category);
+    });
+    return result;
+  }
+
+  function filterDataGroups(groups, query) {
+    const keyword = String(query || "").trim().toLocaleLowerCase();
+    const list = Array.isArray(groups) ? groups : [];
+    if (!keyword) return list;
+    return list
+      .map((group) => {
+        const categoryMatches = String(group.category).toLocaleLowerCase().includes(keyword);
+        return {
+          ...group,
+          files: group.files.filter((file) => categoryMatches
+            || String(file.title).toLocaleLowerCase().includes(keyword)
+            || String(file.name).toLocaleLowerCase().includes(keyword)),
+        };
+      })
+      .filter((group) => group.files.length > 0);
+  }
+
+  function countDataFiles(groups) {
+    return (Array.isArray(groups) ? groups : []).reduce((total, group) => (
+      total + (Array.isArray(group.files) ? group.files.length : 0)
+    ), 0);
+  }
+
+  function formatFileSize(bytes) {
+    const size = Number(bytes) || 0;
+    if (size <= 0) return "空文件";
+    if (size < 1024) return `${size} B`;
+    const units = ["KB", "MB", "GB", "TB"];
+    let value = size / 1024;
+    let index = 0;
+    while (value >= 1024 && index < units.length - 1) {
+      value /= 1024;
+      index += 1;
+    }
+    return `${value >= 100 ? value.toFixed(0) : value.toFixed(1)} ${units[index]}`;
+  }
+
+  function formatFileTime(mtime, now = Date.now()) {
+    const time = Number(mtime) || 0;
+    if (!time) return "未知时间";
+    const date = new Date(time);
+    if (Number.isNaN(date.getTime())) return "未知时间";
+    const current = new Date(now);
+    const diff = current.getTime() - date.getTime();
+    const minute = 60 * 1000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+    const pad = (value) => String(value).padStart(2, "0");
+    if (diff >= 0 && diff < minute) return "刚刚";
+    if (diff >= 0 && diff < hour) return `${Math.max(1, Math.round(diff / minute))} 分钟前`;
+    if (diff >= 0 && diff < day) return `${Math.max(1, Math.round(diff / hour))} 小时前`;
+    if (diff >= 0 && diff < 2 * day) return "昨天";
+    if (date.getFullYear() === current.getFullYear()) {
+      return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
   return {
     PROJECT_SCHEMA,
     rectFromPoints,
@@ -553,5 +697,12 @@
     createCanvasDocument,
     normalizeProjectDocument,
     projectToMarkdown,
+    parseDataFileName,
+    groupDataFiles,
+    filterDataGroups,
+    countDataFiles,
+    formatFileSize,
+    formatFileTime,
+    DATA_CATEGORY_FALLBACK,
   };
 });

@@ -3,7 +3,7 @@
   "meta": {
     "title": "Echochat",
     "createdAt": "2026-10-15T16:14:44.282Z",
-    "updatedAt": "2026-10-28T05:22:00.303Z"
+    "updatedAt": "2026-11-01T05:49:01.779Z"
   },
   "activeCanvasId": "main",
   "canvases": {
@@ -11,10 +11,10 @@
       "id": "main",
       "title": "主画布",
       "viewport": {
-        "scale": 0.6865012019925305,
-        "tx": -185.57039570449604,
-        "ty": -1409.2077591166835,
-        "inspectorWidth": 917.0259704589844,
+        "scale": 0.287174231093475,
+        "tx": 179.50214460863424,
+        "ty": 148.86331195367245,
+        "inspectorWidth": 574.6882934570312,
         "inspectorHeight": 603
       },
       "nodes": [
@@ -1062,9 +1062,9 @@
         }
       ],
       "selection": {
-        "activeId": "node-41",
+        "activeId": "node-1",
         "selectedIds": [
-          "node-41"
+          "node-1"
         ]
       },
       "counters": {

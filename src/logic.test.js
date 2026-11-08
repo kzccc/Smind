@@ -15,6 +15,13 @@ const {
   createProjectDocument,
   normalizeProjectDocument,
   projectToMarkdown,
+  parseDataFileName,
+  groupDataFiles,
+  filterDataGroups,
+  countDataFiles,
+  formatFileSize,
+  formatFileTime,
+  DATA_CATEGORY_FALLBACK,
 } = require("./logic");
 
 function run(name, fn) {
@@ -222,7 +229,7 @@ run("connectNodes appends a child connection without removing existing children"
 });
 
 run("connectNodes links mysql primary-key-index node to how-to-choose-primary-key", () => {
-  const project = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "mysql.mindmap.json"), "utf8"));
+  const project = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "A-mysql.json"), "utf8"));
   const sample = JSON.parse(JSON.stringify(project.canvases?.main?.nodes || project.nodes));
   const result = connectNodes(sample, "node-49", "node-202");
   const source = sample.find((node) => node.id === "node-49");
@@ -359,4 +366,77 @@ run("projectToMarkdown exports a readable outline", () => {
   assert.equal(markdown.includes("- Root"), true);
   assert.equal(markdown.includes("  - A"), true);
   assert.equal(markdown.includes("    - A1"), true);
+});
+
+run("parseDataFileName splits the category at the first dash", () => {
+  const parsed = parseDataFileName("A-网络协议.json");
+  assert.equal(parsed.category, "A");
+  assert.equal(parsed.title, "网络协议");
+  assert.equal(parsed.legacy, false);
+
+  assert.equal(parseDataFileName("B-mysql-索引.json").title, "mysql-索引");
+  assert.equal(parseDataFileName("B-mysql-索引.json").category, "B");
+  assert.equal(parseDataFileName("01-操作系统.json").category, "01");
+  assert.equal(parseDataFileName("面试-TCP.json").category, "面试");
+  assert.equal(parseDataFileName("面试-TCP.json").title, "TCP");
+  assert.equal(parseDataFileName("－全角分隔－名称.json").title, "全角分隔－名称");
+  assert.equal(parseDataFileName("未分组.json").category, DATA_CATEGORY_FALLBACK);
+  assert.equal(parseDataFileName("未分组.json").title, "未分组");
+  assert.equal(parseDataFileName("-无前缀.json").category, DATA_CATEGORY_FALLBACK);
+  assert.equal(parseDataFileName("-无前缀.json").title, "无前缀");
+});
+
+run("parseDataFileName keeps legacy .mindmap.json names readable", () => {
+  const legacy = parseDataFileName("Hepilot.mindmap.json");
+  assert.equal(legacy.title, "Hepilot");
+  assert.equal(legacy.legacy, true);
+
+  const legacyWithPrefix = parseDataFileName("A-旧文件.mindmap.json");
+  assert.equal(legacyWithPrefix.category, "A");
+  assert.equal(legacyWithPrefix.title, "旧文件");
+  assert.equal(legacyWithPrefix.legacy, true);
+});
+
+run("groupDataFiles groups by prefix and keeps 未分类 last", () => {
+  const groups = groupDataFiles([
+    "B-zeta.json",
+    "A-beta.json",
+    "note.json",
+    "A-alpha.json",
+    "面试-TCP.json",
+  ]);
+  assert.deepEqual(groups.map((group) => group.category), ["A", "B", "面试", DATA_CATEGORY_FALLBACK]);
+  assert.deepEqual(groups[0].files.map((file) => file.title), ["alpha", "beta"]);
+  assert.equal(groups[3].files[0].title, "note");
+  assert.equal(countDataFiles(groups), 5);
+});
+
+run("groupDataFiles merges prefixes that only differ by case", () => {
+  const groups = groupDataFiles(["a-one.json", "A-two.json"]);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].files.length, 2);
+});
+
+run("filterDataGroups matches category and title keywords", () => {
+  const groups = groupDataFiles(["A-网络协议.json", "B-mysql索引.json", "未分类笔记.json"]);
+  assert.equal(countDataFiles(filterDataGroups(groups, "mysql")), 1);
+  assert.equal(filterDataGroups(groups, "b")[0].category, "B");
+  assert.equal(filterDataGroups(groups, "网络")[0].category, "A");
+  assert.equal(countDataFiles(filterDataGroups(groups, "   ")), 3);
+  assert.equal(filterDataGroups(groups, "不存在的关键词").length, 0);
+  assert.equal(filterDataGroups(groups, "") === groups, true);
+});
+
+run("formatFileSize and formatFileTime render friendly labels", () => {
+  assert.equal(formatFileSize(512), "512 B");
+  assert.equal(formatFileSize(2048), "2.0 KB");
+  assert.equal(formatFileSize(3 * 1024 * 1024), "3.0 MB");
+  assert.equal(formatFileSize(0), "空文件");
+
+  const now = Date.parse("2026-08-15T12:00:00.000Z");
+  assert.equal(formatFileTime(now - 5 * 1000, now), "刚刚");
+  assert.equal(formatFileTime(now - 5 * 60 * 1000, now), "5 分钟前");
+  assert.equal(formatFileTime(now - 3 * 60 * 60 * 1000, now), "3 小时前");
+  assert.equal(formatFileTime(now - 30 * 60 * 60 * 1000, now), "昨天");
+  assert.equal(formatFileTime(0, now), "未知时间");
 });

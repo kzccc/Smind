@@ -6,7 +6,7 @@ const { chromium } = require("playwright");
 
 const rootDir = path.resolve(__dirname, "..");
 const pageUrl = `file:///${path.join(rootDir, "src", "index.html").replace(/\\/g, "/")}`;
-const mysqlProject = path.join(rootDir, "data", "mysql.mindmap.json");
+const mysqlProject = path.join(rootDir, "data", "A-mysql.json");
 const mysqlProjectData = JSON.parse(fs.readFileSync(mysqlProject, "utf8"));
 const mysqlProjectNodeCount = (mysqlProjectData.canvases?.main?.nodes || mysqlProjectData.nodes).length;
 
@@ -32,6 +32,9 @@ async function run() {
   );
   const page = await context.newPage();
   try {
+    await page.addInitScript(() => {
+      window.__smindDisableDataServer = true;
+    });
     await page.goto(pageUrl);
     await page.waitForSelector(".node");
     await page.setInputFiles("#fileInput", mysqlProject);

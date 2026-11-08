@@ -87,6 +87,9 @@ async function run() {
   const page = await context.newPage();
 
   try {
+    await page.addInitScript(() => {
+      window.__smindDisableDataServer = true;
+    });
     await page.goto(pageUrl);
     await page.waitForSelector(".node");
     await page.waitForSelector("#nodeDetail[contenteditable='true']");

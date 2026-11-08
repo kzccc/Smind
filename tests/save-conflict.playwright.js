@@ -30,6 +30,7 @@ async function run() {
   });
   const page = await context.newPage();
   await page.addInitScript(() => {
+    window.__smindDisableDataServer = true;
     window.__writes = [];
     window.__disk = "";
     window.__mtime = 1;

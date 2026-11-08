@@ -10,31 +10,59 @@
   <div id="app">
     <main class="workbench">
       <header class="toolbar">
+        <div class="toolbar-brand" aria-label="Smind">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-name">Smind</span>
+        </div>
+
+        <div id="currentFile" class="file-chip" hidden>
+          <span class="file-chip-category"></span>
+          <span class="file-chip-title"></span>
+        </div>
+
         <div class="file-actions">
-          <button id="newFile" type="button">新建</button>
-          <button id="openFile" type="button">打开</button>
-          <button id="saveAsFile" type="button">另存为</button>
-          <button id="exportMarkdown" type="button">导出MD</button>
-          <button id="pushRepository" type="button">推送</button>
-          <span id="saveStatus">自动保存</span>
-          <input id="fileInput" type="file" accept=".mindmap.json,.json,application/json" hidden>
+          <button id="newFile" type="button" class="tool-button">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"></path></svg>
+            <span>新建</span>
+          </button>
+          <button id="openFile" type="button" class="tool-button tool-button-primary">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 5.5V12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1H8L6.6 3.8A1 1 0 0 0 5.9 3.5H3a1 1 0 0 0-1 1z"></path></svg>
+            <span>打开</span>
+          </button>
+          <button id="saveAsFile" type="button" class="tool-button">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7M5.2 6.4 8 9.2l2.8-2.8M3 11.5V12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-.5"></path></svg>
+            <span>另存为</span>
+          </button>
+          <button id="exportMarkdown" type="button" class="tool-button">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.5h6L13 6v7.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-10a1 1 0 0 1 .5-.9z"></path><path d="M9 2.5V6h3.5M5.5 9.5h5M5.5 12h3"></path></svg>
+            <span>导出 MD</span>
+          </button>
+          <button id="pushRepository" type="button" class="tool-button tool-button-ghost">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 10.5V3M5.2 5.8 8 3l2.8 2.8M3 11.5v1A1.5 1.5 0 0 0 4.5 14h7A1.5 1.5 0 0 0 13 12.5v-1"></path></svg>
+            <span>推送</span>
+          </button>
+          <span id="saveStatus" class="save-status">自动保存</span>
+          <input id="fileInput" type="file" accept=".json,application/json" hidden>
         </div>
 
-        <div class="swatches" aria-label="颜色选择">
-          <button data-color="red" title="红" type="button"></button>
-          <button data-color="orange" title="橙" type="button"></button>
-          <button data-color="yellow" title="黄" type="button"></button>
-          <button data-color="green" title="绿" type="button"></button>
-          <button data-color="cyan" title="青" type="button"></button>
-          <button data-color="blue" title="蓝" type="button"></button>
-          <button data-color="purple" title="紫" type="button"></button>
-          <button data-color="white" title="白" type="button"></button>
-          <button data-color="black" title="黑" type="button"></button>
-        </div>
+        <div class="toolbar-colors">
+          <div class="swatches" aria-label="颜色选择">
+            <button data-color="red" title="红" type="button"></button>
+            <button data-color="orange" title="橙" type="button"></button>
+            <button data-color="yellow" title="黄" type="button"></button>
+            <button data-color="green" title="绿" type="button"></button>
+            <button data-color="cyan" title="青" type="button"></button>
+            <button data-color="blue" title="蓝" type="button"></button>
+            <button data-color="purple" title="紫" type="button"></button>
+            <button data-color="white" title="白" type="button"></button>
+            <button data-color="black" title="黑" type="button"></button>
+          </div>
 
-        <div class="font-control">
-          <input id="fontSize" aria-label="字号" type="range" min="12" max="30" value="16">
-          <span id="fontValue">16</span>
+          <div class="font-control">
+            <span class="font-control-label">字号</span>
+            <input id="fontSize" aria-label="字号" type="range" min="12" max="30" value="16">
+            <span id="fontValue" class="font-control-value">16</span>
+          </div>
         </div>
       </header>
 
@@ -115,28 +143,57 @@
     </aside>
   </div>
 
-  <dialog id="newFileDialog" class="new-file-dialog" aria-labelledby="newFileDialogTitle">
-    <form id="newFileForm" method="dialog">
-      <h2 id="newFileDialogTitle">新建思维导图</h2>
-      <label for="newFileName">文件名称</label>
-      <input id="newFileName" type="text" autocomplete="off" required>
-      <p id="newFileError" class="new-file-error" role="alert"></p>
-      <div class="new-file-actions">
-        <button id="cancelNewFile" type="button">取消</button>
-        <button id="confirmNewFile" type="submit">确定</button>
+  <dialog id="newFileDialog" class="sheet-dialog sheet-dialog-compact" aria-labelledby="newFileDialogTitle">
+    <form id="newFileForm" class="sheet" method="dialog">
+      <header class="sheet-head">
+        <div class="sheet-title">
+          <span class="sheet-eyebrow">DATA / JSON</span>
+          <h2 id="newFileDialogTitle">新建思维导图</h2>
+        </div>
+      </header>
+      <div class="sheet-body">
+        <label class="field-label" for="newFileName">文件名称</label>
+        <input id="newFileName" class="field-input" type="text" autocomplete="off" required placeholder="A-我的主题">
+        <p class="field-hint">用 <code>分类-名称</code> 命名，例如 <code>A-网络协议</code>，文件会自动归到 <strong>A</strong> 分类。留空扩展名将自动补 <code>.json</code>。</p>
+        <p id="newFileError" class="sheet-error" role="alert"></p>
       </div>
+      <footer class="sheet-foot sheet-foot-actions">
+        <button id="cancelNewFile" class="btn" type="button">取消</button>
+        <button id="confirmNewFile" class="btn btn-primary" type="submit">确定</button>
+      </footer>
     </form>
   </dialog>
 
-  <dialog id="openFileDialog" class="new-file-dialog" aria-labelledby="openFileDialogTitle">
-    <form method="dialog">
-      <h2 id="openFileDialogTitle">打开思维导图</h2>
-      <div id="openFileList" class="open-file-list"></div>
-      <p id="openFileError" class="new-file-error" role="alert"></p>
-      <div class="new-file-actions">
-        <button id="cancelOpenFile" type="submit">取消</button>
-      </div>
-    </form>
+  <dialog id="openFileDialog" class="sheet-dialog" aria-labelledby="openFileDialogTitle">
+    <div class="sheet">
+      <header class="sheet-head">
+        <div class="sheet-title">
+          <span class="sheet-eyebrow">DATA / 已分类</span>
+          <h2 id="openFileDialogTitle">打开思维导图</h2>
+          <p class="sheet-subtitle">按文件名 <code>-</code> 前面的分类自动分组，点一下即打开。</p>
+        </div>
+        <div class="sheet-tools">
+          <label class="search-field">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.2"></circle><path d="M10.2 10.2 14 14"></path></svg>
+            <input id="openFileSearch" type="text" placeholder="搜索分类或文件名" autocomplete="off" spellcheck="false" aria-label="搜索文件">
+          </label>
+          <button id="openFileDir" class="btn btn-quiet" type="button" title="换一个 data 目录">切换目录</button>
+          <button id="closeOpenFile" class="btn btn-icon" type="button" aria-label="关闭" title="关闭 (Esc)">✕</button>
+        </div>
+      </header>
+
+      <div id="openFileList" class="open-file-list" role="listbox" aria-label="data 目录中的思维导图"></div>
+
+      <p id="openFileError" class="sheet-error" role="alert"></p>
+
+      <footer class="sheet-foot">
+        <span id="openFileSource" class="sheet-source">data/</span>
+        <div class="sheet-foot-end">
+          <span class="sheet-hint">↑ ↓ 选择 · Enter 打开 · Esc 关闭</span>
+          <button id="cancelOpenFile" class="btn btn-quiet" type="button">关闭</button>
+        </div>
+      </footer>
+    </div>
   </dialog>
 
   <script src="./logic.js"></script>

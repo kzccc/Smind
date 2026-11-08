@@ -3,17 +3,17 @@
   "meta": {
     "title": "aveil",
     "createdAt": "2026-09-08T03:21:43.614Z",
-    "updatedAt": "2026-10-27T22:36:42.292Z"
+    "updatedAt": "2026-10-30T11:46:36.854Z"
   },
-  "activeCanvasId": "summary",
+  "activeCanvasId": "main",
   "canvases": {
     "main": {
       "id": "main",
       "title": "主画布",
       "viewport": {
         "scale": 0.3663731886220259,
-        "tx": 29.88868678681871,
-        "ty": 165.87166637848958,
+        "tx": 83.88868678681871,
+        "ty": -226.12833362151036,
         "inspectorWidth": 555,
         "inspectorHeight": 603
       },
@@ -2945,9 +2945,9 @@
         }
       ],
       "selection": {
-        "activeId": "node-5",
+        "activeId": "node-1",
         "selectedIds": [
-          "node-5"
+          "node-1"
         ]
       },
       "counters": {

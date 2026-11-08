@@ -232,7 +232,7 @@ function convertXmindToProject(xmindPath, outputPath) {
     node.children = node.children.filter((cid) => nodeIds.has(cid));
   }
 
-  const outputFile = path.join(outputPath, `${fileName}.mindmap.json`);
+  const outputFile = path.join(outputPath, `${fileName}.json`);
   fs.writeFileSync(outputFile, JSON.stringify(project, null, 2), "utf8");
   console.log(`  ✓ ${outputFile} (${allNodes.length} 个节点)`);
 }

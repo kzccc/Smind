@@ -54,6 +54,7 @@ async function run() {
   });
 
   await context.addInitScript(() => {
+    window.__smindDisableDataServer = true;
     window.__testWrites = [];
     window.__openPickerOptions = null;
     window.__savePickerOptions = null;
@@ -298,6 +299,8 @@ async function run() {
     // before the global file handle/project state changes.
     await page.locator("#nodeDetail").fill("切换前最后编辑");
     await page.locator("#openFile").click();
+    await page.waitForSelector("#openFileDialog[open]");
+    await page.locator("#openFileList .btn-quiet").click();
     await page.waitForSelector("text=打开文件节点");
     const flushedWrites = await page.evaluate(() => window.__testWrites.slice());
     assert.equal(
@@ -345,7 +348,7 @@ async function run() {
     await page.locator("#newFileName").fill("新建项目");
     await page.locator("#confirmNewFile").click();
     await page.waitForFunction(() => document.querySelector("#saveStatus")?.textContent === "已新建");
-    const newProject = await page.evaluate(() => JSON.parse(window.__newProjectFiles["新建项目.mindmap.json"]));
+    const newProject = await page.evaluate(() => JSON.parse(window.__newProjectFiles["新建项目.json"]));
     assert.equal(newProject.meta.title, "新建项目");
     assert.equal(newProject.schema, "mindmap.product.v2");
     assert.equal(await page.locator("#newFileDialog").evaluate((dialog) => dialog.open), false);

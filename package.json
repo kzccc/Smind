@@ -2,11 +2,13 @@
   "name": "smind",
   "private": true,
   "scripts": {
+    "start": "node tools/git-push-server.js",
     "test:keyboard": "node tests/keyboard.playwright.js",
     "test:performance": "node tests/performance.playwright.js",
     "test:richtext": "node tests/richtext.playwright.js",
     "test:storage": "node tests/storage.playwright.js",
     "test:push-button": "node tests/push-button.playwright.js",
+    "test:data-browser": "node tests/data-browser.playwright.js",
     "git-helper": "node tools/git-push-server.js",
     "git-helper-startup": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/start-git-helper.ps1",
     "test:save-conflict": "node tests/save-conflict.playwright.js"
