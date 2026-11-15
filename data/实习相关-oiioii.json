@@ -3,7 +3,7 @@
   "meta": {
     "title": "oiioii",
     "createdAt": "2026-11-08T13:58:43.021Z",
-    "updatedAt": "2026-11-08T15:43:54.356Z"
+    "updatedAt": "2026-11-15T15:18:55.460Z"
   },
   "activeCanvasId": "main",
   "canvases": {
@@ -11,11 +11,11 @@
       "id": "main",
       "title": "主画布",
       "viewport": {
-        "scale": 1.1231370698149354,
-        "tx": -71.06335332352234,
-        "ty": 3.2057552215276814,
-        "inspectorWidth": 390,
-        "inspectorHeight": 1178.6363830566406
+        "scale": 1.005814034498078,
+        "tx": -345.9333604662988,
+        "ty": -429.9019514071349,
+        "inspectorWidth": 759.1038208007812,
+        "inspectorHeight": 180
       },
       "nodes": [
         {
@@ -164,16 +164,97 @@
           "color": "default",
           "fontSize": 15,
           "children": []
+        },
+        {
+          "id": "node-10",
+          "parentId": null,
+          "x": -48.127277118191,
+          "y": 446.7314401217031,
+          "w": 136,
+          "h": 54,
+          "text": "idl",
+          "detail": "normalizeStyleModelMeta — 把库里存的原始元数据（新旧格式混杂）统一成 { agentModel, canvasModels }，顺手去重、丢脏数据，不报错。resolveAgentStyleModel — 回答“agent 该用哪个模型”，没有可用模型就返回 undefined。resolveCanvasStyleModel — 拿用户选的模型去 canvasModels 里查，支持就返回它，不支持返回 undefined。validateStyleModelMeta — 写库前校验（非空、agent 属于 canvas、不跨族、镜像一致），返回错误文案数组。isStyleModelRef — 判断一个值是不是合法的 { tool, version }（两字段都非空）。styleModelKey — 生成模型的唯一标识，用来判等；版本不同就是不同模型。styleFamilyOfTool — 工具名归到工具族（natural / midjourney / novelai），只服务“不能跨族混选”。",
+          "detailHtml": "normalizeStyleModelMeta — 把库里存的原始元数据（新旧格式混杂）统一成 { agentModel, canvasModels }，顺手去重、丢脏数据，不报错。<br><br>resolveAgentStyleModel — 回答“agent 该用哪个模型”，没有可用模型就返回 undefined。<br><br>resolveCanvasStyleModel — 拿用户选的模型去 canvasModels 里查，支持就返回它，不支持返回 undefined。<br><br>validateStyleModelMeta — 写库前校验（非空、agent 属于 canvas、不跨族、镜像一致），返回错误文案数组。<br><br>isStyleModelRef — 判断一个值是不是合法的 { tool, version }（两字段都非空）。<br><br>styleModelKey — 生成模型的唯一标识，用来判等；版本不同就是不同模型。<br><br>styleFamilyOfTool — 工具名归到工具族（natural / midjourney / novelai），只服务“不能跨族混选”。",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 16,
+          "children": []
+        },
+        {
+          "id": "node-11",
+          "parentId": null,
+          "x": -25.764127508716005,
+          "y": 592.3622305472649,
+          "w": 136,
+          "h": 54,
+          "text": "链路",
+          "detail": "// ① 消息进来（这条 human 消息本身不被改写）msg.data.additional_kwargs.workspaceReferences = [  { uri: \"hogi://style/1832\", id: \"ref-1\", content: \"日系治愈\", propertyPath: null }]// ② v5 组装用户输入时，把整条消息拍成快照buildMessageContentSnapshot(msg)  refs = msg.data.additional_kwargs.workspaceReferences  values = serializeReferenceValuesV5(refs, user, workspace, trace)    for each ref in refs:      // ③ 按 uri 前缀判类型      type = \"style\"        // 来自 getUriResourceInfo(uri)      if type == \"style\":        // ④ 回库取原始 meta（带 tool/version/agentModel/canvasModels 的那份）        rawMeta = readFromUriForLLM(uri)          // → StyleAssetMeta        // ⑤ 投影成给模型看的文档        doc = createLLMStyleDocumentWrapper(rawMeta)               ┌─ agentModel = resolveAgentStyleModel({               │      tool:       rawMeta.tool,               │      version:    rawMeta.version,               │      agentModel: rawMeta.agentModel,               │      canvasModels: rawMeta.canvasModels               │  })               │      └─ normalizeStyleModelMeta(...)   // 收敛新旧格式               │           → { agentModel?, canvasModels[] }               │      → 返回权威 {tool, version} 或 undefined               │               └─ return LLMStyleDocument {                      agentModel,                      // ← 权威                      genImageTool:        agentModel?.tool    ?? rawMeta.tool,                      genImageToolVersion: agentModel?.version ?? rawMeta.version,                      styleName, styleTrigger, videoTrigger,                      videoStyleNegativePrompt                  }        // ⑥ 只挑进 prompt 需要的字段        value = buildStyleReferenceValue(doc, uri, lang)                  return {                    styleName: lang == \"zh\" ? doc.styleNameCn : doc.styleName,                    styleUri:  uri,                    agentModel: doc.agentModel,      // 有才带                    videoTrigger: doc.videoTrigger,  // 有才带                    videoStyleNegativePrompt: doc.videoStyleNegativePrompt                  }      values.push(value)  // ⑦ 数组整体序列化进用户输入  userInput.references = values",
+          "detailHtml": "// ① 消息进来（这条 human 消息本身不被改写）<br>msg.data.additional_kwargs.workspaceReferences = [<br>  { uri: \"hogi://style/1832\", id: \"ref-1\", content: \"日系治愈\", propertyPath: null }<br>]<br><br>// ② v5 组装用户输入时，把整条消息拍成快照<br>buildMessageContentSnapshot(msg)<br>  refs = msg.data.additional_kwargs.workspaceReferences<br>  values = serializeReferenceValuesV5(refs, user, workspace, trace)<br><br>    for each ref in refs:<br>      // ③ 按 uri 前缀判类型<br>      type = \"style\"        // 来自 getUriResourceInfo(uri)<br><br>      if type == \"style\":<br>        // ④ 回库取原始 meta（带 tool/version/agentModel/canvasModels 的那份）<br>        rawMeta = readFromUriForLLM(uri)          // → StyleAssetMeta<br><br>        // ⑤ 投影成给模型看的文档<br>        doc = createLLMStyleDocumentWrapper(rawMeta)<br>               ┌─ agentModel = resolveAgentStyleModel({<br>               │      tool:       rawMeta.tool,<br>               │      version:    rawMeta.version,<br>               │      agentModel: rawMeta.agentModel,<br>               │      canvasModels: rawMeta.canvasModels<br>               │  })<br>               │      └─ normalizeStyleModelMeta(...)   // 收敛新旧格式<br>               │           → { agentModel?, canvasModels[] }<br>               │      → 返回权威 {tool, version} 或 undefined<br>               │<br>               └─ return LLMStyleDocument {<br>                      agentModel,                      // ← 权威<br>                      genImageTool:        agentModel?.tool    ?? rawMeta.tool,<br>                      genImageToolVersion: agentModel?.version ?? rawMeta.version,<br>                      styleName, styleTrigger, videoTrigger,<br>                      videoStyleNegativePrompt<br>                  }<br><br>        // ⑥ 只挑进 prompt 需要的字段<br>        value = buildStyleReferenceValue(doc, uri, lang)<br>                  return {<br>                    styleName: lang == \"zh\" ? doc.styleNameCn : doc.styleName,<br>                    styleUri:  uri,<br>                    agentModel: doc.agentModel,      // 有才带<br>                    videoTrigger: doc.videoTrigger,  // 有才带<br>                    videoStyleNegativePrompt: doc.videoStyleNegativePrompt<br>                  }<br><br>      values.push(value)<br><br>  // ⑦ 数组整体序列化进用户输入<br>  userInput.references = values",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 16,
+          "children": [
+            "node-12"
+          ]
+        },
+        {
+          "id": "node-12",
+          "parentId": "node-11",
+          "x": 259.235872491284,
+          "y": 592.3622305472649,
+          "w": 136,
+          "h": 54,
+          "text": "human消息",
+          "detail": "{  \"type\": \"human\",  \"data\": {    \"id\": \"lc_msg_8f3c...\",    \"content\": \"用这个风格画一个赛博朋克少女\",    \"additional_kwargs\": {      \"workspaceReferences\": [        {          \"uri\": \"hogi://style/1832\",          \"id\": \"ref-1\",          \"content\": \"日系治愈\",          \"propertyPath\": null        }      ]    }  }}",
+          "detailHtml": "{<br>  \"type\": \"human\",<br>  \"data\": {<br>    \"id\": \"lc_msg_8f3c...\",<br>    \"content\": \"用这个风格画一个赛博朋克少女\",<br>    \"additional_kwargs\": {<br>      \"workspaceReferences\": [<br>        {<br>          \"uri\": \"hogi://style/1832\",<br>          \"id\": \"ref-1\",<br>          \"content\": \"日系治愈\",<br>          \"propertyPath\": null<br>        }<br>      ]<br>    }<br>  }<br>}",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": [
+            "node-13"
+          ]
+        },
+        {
+          "id": "node-13",
+          "parentId": "node-12",
+          "x": 544.235872491284,
+          "y": 592.3622305472649,
+          "w": 136,
+          "h": 54,
+          "text": "展开uri",
+          "detail": "模型读不懂 hogi://style/1832 这个指针。所谓展开，就是拿这个 id 回库查一次，把指针换成一段结构化文本：hogi://style/1832        ↓ 查 meta + resolveAgentStyleModel{  \"styleName\": \"日系治愈\",  \"styleUri\": \"hogi://style/1832\",  \"agentModel\": { \"tool\": \"generate_image_gpt_image2\", \"version\": \"2.5-flare\" },  \"videoTrigger\": \"...\",  \"videoStyleNegativePrompt\": \"...\"}resolveAgentStyleModel所以这个就是在这里用的, 从数据库拿回来的东西过滤成需要的字段:过滤字段是 createLLMStyleDocumentWrapper 干的——把 StyleAssetMeta 里运营用的那些键（分类、点击量、region、封面…）剔掉，只留名字/触发词/视频字段/模型。resolveAgentStyleModel 只负责挑出“用哪个模型”，它内部先 normalizeStyleModelMeta 把新旧格式收敛，再按“声明值 → 旧单值 → canvasModels[0]”回退，返回一个 {tool, version}。所以它不是“过滤”，是“收敛完之后取权威值”。过滤后的 agentModel 会被同时写进 agentModel 和 genImageTool/genImageToolVersion 三个字段。",
+          "detailHtml": "模型读不懂 hogi://style/1832 这个指针。所谓展开，就是拿这个 id 回库查一次，把指针换成一段结构化文本：<br><br><br>hogi://style/1832<br>        ↓ 查 meta + resolveAgentStyleModel<br>{<br>  \"styleName\": \"日系治愈\",<br>  \"styleUri\": \"hogi://style/1832\",<br>  \"agentModel\": { \"tool\": \"generate_image_gpt_image2\", \"version\": \"2.5-flare\" },<br>  \"videoTrigger\": \"...\",<br>  \"videoStyleNegativePrompt\": \"...\"<br>}<br><br><span style=\"color: rgb(192, 57, 43);\">resolveAgentStyleModel</span>所以这个就是在这里用的, 从数据库拿回来的东西过滤成需要的字段:<br><br>过滤字段是 createLLMStyleDocumentWrapper 干的——把 StyleAssetMeta 里运营用的那些键（分类、点击量、region、封面…）剔掉，只留名字/触发词/视频字段/模型。<br><br><br>resolveAgentStyleModel 只负责挑出“用哪个模型”，它内部先 normalizeStyleModelMeta 把新旧格式收敛，再按“声明值 → 旧单值 → canvasModels[0]”回退，返回一个 {tool, version}。<br><br><br>所以它不是“过滤”，是“收敛完之后取权威值”。过滤后的 agentModel 会被同时写进 agentModel 和 genImageTool/genImageToolVersion 三个字段。",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": [
+            "node-14"
+          ]
+        },
+        {
+          "id": "node-14",
+          "parentId": "node-13",
+          "x": 829.235872491284,
+          "y": 592.3622305472649,
+          "w": 136,
+          "h": 54,
+          "text": "写入临时内存",
+          "detail": "agentModel 和 genImageTool/genImageToolVersion 三个字段。LLMStyleDocument 没有表、没有写入路径，是 createLLMStyleDocumentWrapper 在读取时现场算出来的。算完交给 buildStyleReferenceValue 挑几个字段塞进 v5 userInput，这一轮结束就没了。“挑几个字段”就是 buildStyleReferenceValue 的返回值——它从整份 LLMStyleDocument 里只取四个：{  styleName,                       // 按语言选 styleNameCn 或 styleName  styleUri,                        // 原样带回  agentModel,                      // 有才加  videoTrigger,                    // 有才加  videoStyleNegativePrompt         // 有才加}",
+          "detailHtml": "agentModel 和 genImageTool/genImageToolVersion 三个字段。<br><br><br>LLMStyleDocument 没有表、没有写入路径，是 createLLMStyleDocumentWrapper 在读取时现场算出来的。算完交给 buildStyleReferenceValue 挑几个字段塞进 v5 userInput，这一轮结束就没了。<br><br>“挑几个字段”就是 buildStyleReferenceValue 的返回值——它从整份 LLMStyleDocument 里只取四个：{<br>  styleName,                       // 按语言选 styleNameCn 或 styleName<br>  styleUri,                        // 原样带回<br>  agentModel,                      // 有才加<br>  videoTrigger,                    // 有才加<br>  videoStyleNegativePrompt         // 有才加<br>}",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
         }
       ],
       "selection": {
-        "activeId": "node-8",
+        "activeId": "node-13",
         "selectedIds": [
-          "node-8"
+          "node-13"
         ]
       },
       "counters": {
-        "nextId": 10
+        "nextId": 15
       }
     },
     "summary": {
