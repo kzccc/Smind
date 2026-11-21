@@ -3,7 +3,7 @@
   "meta": {
     "title": "oiioii",
     "createdAt": "2026-11-08T13:58:43.021Z",
-    "updatedAt": "2026-11-15T15:18:55.460Z"
+    "updatedAt": "2026-11-15T16:22:50.936Z"
   },
   "activeCanvasId": "main",
   "canvases": {
@@ -12,9 +12,9 @@
       "title": "主画布",
       "viewport": {
         "scale": 1.005814034498078,
-        "tx": -345.9333604662988,
-        "ty": -429.9019514071349,
-        "inspectorWidth": 759.1038208007812,
+        "tx": -61.933360466298836,
+        "ty": -146.9019514071349,
+        "inspectorWidth": 1073.3895874023438,
         "inspectorHeight": 180
       },
       "nodes": [
@@ -178,7 +178,9 @@
           "detailLineGap": 0.5,
           "color": "default",
           "fontSize": 16,
-          "children": []
+          "children": [
+            "node-15"
+          ]
         },
         {
           "id": "node-11",
@@ -245,16 +247,31 @@
           "color": "default",
           "fontSize": 15,
           "children": []
+        },
+        {
+          "id": "node-15",
+          "parentId": "node-10",
+          "x": 236.872722881809,
+          "y": 446.7314401217031,
+          "w": 136,
+          "h": 54,
+          "text": "新子节点",
+          "detail": "export function normalizeStyleModelMeta(meta: StyleModelMeta | null | undefined): NormalizedStyleModelMeta {\tif (!meta) return { canvasModels: [] };\tconst legacy = readLegacyRef(meta);\tconst declared = Array.isArray(meta.canvasModels)\t\t? dedupe(meta.canvasModels.filter(isStyleModelRef))\t\t: [];\tconst canvasModels = declared.length > 0 ? declared : (legacy ? [legacy] : []);\tif (canvasModels.length === 0) return { canvasModels };\tconst declaredAgent = isStyleModelRef(meta.agentModel) ? meta.agentModel : undefined;\tconst agentModel = declaredAgent && canvasModels.some(ref => styleModelKey(ref) === styleModelKey(declaredAgent))\t\t? { tool: declaredAgent.tool.trim(), version: declaredAgent.version.trim() }\t\t: (legacy && canvasModels.some(ref => styleModelKey(ref) === styleModelKey(legacy))\t\t\t? legacy\t\t\t: canvasModels[0]);\treturn { agentModel, canvasModels };}",
+          "detailHtml": "export function normalizeStyleModelMeta(meta: StyleModelMeta | null | undefined): NormalizedStyleModelMeta {<br>\tif (!meta) return { canvasModels: [] };<br>\tconst legacy = readLegacyRef(meta);<br>\tconst declared = Array.isArray(meta.canvasModels)<br>\t\t? dedupe(meta.canvasModels.filter(isStyleModelRef))<br>\t\t: [];<br>\tconst canvasModels = declared.length &gt; 0 ? declared : (legacy ? [legacy] : []);<br>\tif (canvasModels.length === 0) return { canvasModels };<br><br>\tconst declaredAgent = isStyleModelRef(meta.agentModel) ? meta.agentModel : undefined;<br>\tconst agentModel = declaredAgent &amp;&amp; canvasModels.some(ref =&gt; styleModelKey(ref) === styleModelKey(declaredAgent))<br>\t\t? { tool: declaredAgent.tool.trim(), version: declaredAgent.version.trim() }<br>\t\t: (legacy &amp;&amp; canvasModels.some(ref =&gt; styleModelKey(ref) === styleModelKey(legacy))<br>\t\t\t? legacy<br>\t\t\t: canvasModels[0]);<br><br>\treturn { agentModel, canvasModels };<br>}",
+          "detailLineGap": 0.5,
+          "color": "default",
+          "fontSize": 15,
+          "children": []
         }
       ],
       "selection": {
-        "activeId": "node-13",
+        "activeId": "node-15",
         "selectedIds": [
-          "node-13"
+          "node-15"
         ]
       },
       "counters": {
-        "nextId": 15
+        "nextId": 16
       }
     },
     "summary": {
