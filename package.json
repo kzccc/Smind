@@ -6,6 +6,7 @@
     "test:keyboard": "node tests/keyboard.playwright.js",
     "test:performance": "node tests/performance.playwright.js",
     "test:richtext": "node tests/richtext.playwright.js",
+    "test:code-display": "node tests/code-display.playwright.js",
     "test:storage": "node tests/storage.playwright.js",
     "test:push-button": "node tests/push-button.playwright.js",
     "test:data-browser": "node tests/data-browser.playwright.js",

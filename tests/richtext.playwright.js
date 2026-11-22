@@ -470,14 +470,14 @@ async function run() {
         count: editor.querySelectorAll("pre.detail-code-block").length,
         text: code?.textContent || "",
         background: style?.backgroundColor || "",
-        border: style?.border || "",
+        border: style?.borderLeft || "",
         font: style?.fontFamily || "",
       };
     });
     assert.equal(codeBlock.count, 1);
     assert.equal(codeBlock.text, "const value = 8;\nif (value > 2) {\n  return value;\n}");
-    assert.equal(codeBlock.background, "rgb(45, 45, 45)");
-    assert.equal(codeBlock.border, "3px solid rgb(47, 111, 159)");
+    assert.equal(codeBlock.background, "rgb(27, 35, 48)");
+    assert.equal(codeBlock.border, "4px solid rgb(74, 123, 255)");
     assert.equal(codeBlock.font.includes("Consolas"), true);
     const syntaxClasses = await page.locator("#nodeDetail pre.detail-code-block code").evaluate((code) =>
       [...code.querySelectorAll("span")].map((span) => span.className));
@@ -553,7 +553,7 @@ async function run() {
     });
     assert.equal(pointBlock.count, 1);
     assert.equal(pointBlock.text, "第一要点\n第二要点");
-    assert.equal(pointBlock.background, "rgb(238, 249, 255)");
+    assert.equal(pointBlock.background, "rgb(240, 250, 255)");
     console.log("ok要点 button converts selected text into a light-blue point block");
     await page.locator("#nodeDetail").evaluate((editor) => {
       const textNode = editor.querySelector("pre.detail-point-block code")?.firstChild;

@@ -502,14 +502,14 @@ function sanitizeDetailHtml(html) {
         ? "detail-point-block"
         : "detail-code-block";
       const code = document.createElement("code");
-      function appendCodeContent(node, format = defaultFormat) {
+      function appendCodeContent(node, format = defaultFormat, target = code) {
         if (node.nodeType === Node.TEXT_NODE) {
-          appendText((node.textContent || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n"), format, code);
+          appendText((node.textContent || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n"), format, target);
           return;
         }
         if (node.nodeType !== Node.ELEMENT_NODE) return;
         if (node.tagName.toLowerCase() === "br") {
-          appendText("\n", format, code);
+          appendText("\n", format, target);
           return;
         }
         if (/^tok-/.test(node.className || "")) {
@@ -518,19 +518,27 @@ function sanitizeDetailHtml(html) {
           if (format.backgroundColor || node.style.backgroundColor) tokenSpan.style.backgroundColor = node.style.backgroundColor || format.backgroundColor;
           if (format.color || node.style.color) tokenSpan.style.color = node.style.color || format.color;
           if (format.fontSize || node.style.fontSize) tokenSpan.style.fontSize = node.style.fontSize || format.fontSize;
-          tokenSpan.textContent = node.textContent || "";
-          code.append(tokenSpan);
+          [...node.childNodes].forEach((child) => appendCodeContent(child, defaultFormat, tokenSpan));
+          target.append(tokenSpan);
           return;
         }
         const nextFormat = { ...format };
         if (node.style.backgroundColor) nextFormat.backgroundColor = node.style.backgroundColor;
         if (node.style.color) nextFormat.color = node.style.color;
         if (node.style.fontSize) nextFormat.fontSize = node.style.fontSize;
-        [...node.childNodes].forEach((child) => appendCodeContent(child, nextFormat));
+        [...node.childNodes].forEach((child) => appendCodeContent(child, nextFormat, target));
       }
       const hasTokenSpans = [...source.querySelectorAll("span")].some((span) => /^tok-/.test(span.className));
       const hasStyledSpans = [...source.querySelectorAll("span")].some((span) => span.hasAttribute("style"));
-      if (!hasTokenSpans && !hasStyledSpans) {
+      const codeSource = source.querySelector("code");
+      const legacyFormat = codeSource?.childNodes.length === 1 ? codeSource.firstChild : null;
+      const hasLegacyEditorWash = legacyFormat?.nodeType === Node.ELEMENT_NODE
+        && legacyFormat.className === "tok-format"
+        && legacyFormat.style.backgroundColor === "rgb(247, 249, 252)"
+        && legacyFormat.style.color === "rgb(16, 24, 40)"
+        && legacyFormat.style.fontSize === "15px"
+        && !legacyFormat.querySelector("span");
+      if ((!hasTokenSpans && !hasStyledSpans) || hasLegacyEditorWash) {
         appendGoSyntax(code, source.textContent || "");
       } else {
         [...source.childNodes].forEach((child) => appendCodeContent(child));
@@ -2168,7 +2176,13 @@ function applyDetailFormat(format, properties) {
   const fragment = range.extractContents();
   removeDetailStyles(fragment, properties);
   const span = document.createElement("span");
-  if (range.commonAncestorContainer.parentElement?.closest?.("pre.detail-code-block")) span.className = "tok-format";
+  if (range.commonAncestorContainer.parentElement?.closest?.("pre.detail-code-block")) {
+    span.className = "tok-format";
+    if (properties.includes("color")) span.classList.add("tok-foreground");
+    if (properties.includes("backgroundColor")) {
+      span.classList.add(format.backgroundColor === detailHighlightColors.black ? "tok-highlight-dark" : "tok-highlight-light");
+    }
+  }
   if (properties.includes("backgroundColor") && format.backgroundColor) span.style.backgroundColor = format.backgroundColor;
   if (properties.includes("color") && format.color) span.style.color = format.color;
   if (properties.includes("fontSize") && format.fontSize) span.style.fontSize = format.fontSize;

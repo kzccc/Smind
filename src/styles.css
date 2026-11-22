@@ -876,6 +876,7 @@ body.inspector-resizing .inspector-resizer::after {
 
 .detail-input pre.detail-code-block {
   box-sizing: border-box;
+  max-width: 100%;
   margin: 10px 0;
   padding: 12px 14px 12px 16px;
   border: 1px solid #1e293b;
@@ -887,8 +888,8 @@ body.inspector-resizing .inspector-resizer::after {
   font-family: var(--mono);
   font-size: 13.5px;
   line-height: 1.65;
-  white-space: pre-wrap;
-  overflow-x: hidden;
+  white-space: pre;
+  overflow-x: auto;
   tab-size: 2;
 }
 
@@ -898,7 +899,12 @@ body.inspector-resizing .inspector-resizer::after {
 .detail-input pre.detail-code-block .tok-number { color: #a6e3a1; }
 .detail-input pre.detail-code-block .tok-type { color: #7fd1c1; }
 .detail-input pre.detail-code-block .tok-constant { color: #89b4fa; }
-.detail-input pre.detail-code-block .tok-format { background: rgba(74, 123, 255, .28); border-radius: 3px; }
+.detail-input pre.detail-code-block .tok-format { border-radius: 3px; }
+.detail-input pre.detail-code-block .tok-highlight-light { color: #101828; }
+.detail-input pre.detail-code-block .tok-highlight-dark { color: #fff; }
+.detail-input pre.detail-code-block .tok-foreground [class^="tok-"],
+.detail-input pre.detail-code-block .tok-highlight-light [class^="tok-"],
+.detail-input pre.detail-code-block .tok-highlight-dark [class^="tok-"] { color: inherit; }
 
 .detail-input pre.detail-code-block code {
   display: block;
